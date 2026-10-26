@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · Performance: draw calls, instancing, LOD, culling — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part II — Fundamentals</div>
+<h1>Performance: draw calls, instancing, LOD and culling</h1>
+<p class="lead">A city of 20,000 buildings can run at 60 frames per second, or at 4. Same buildings, same GPU: the difference is how many times the CPU has to ask the GPU to draw something. This page explains the budget every frame lives inside, and the four standard tricks that keep big scenes smooth.</p>
+
+<h2>Why performance is the whole game</h2>
+<ul>
+  <li><b>The budget.</b> At 60 fps you have 16.7 ms per frame for everything: JavaScript, physics, draw calls and GPU work. At 120 Hz, 8.3 ms. Miss it and the scene stutters, and in first-person, stutter feels much worse than low detail.</li>
+  <li><b>Laptops throttle.</b> A scene that runs at 60 fps for 30 seconds can drop once the GPU heats up. Integrated GPUs share memory bandwidth with the CPU. <span class="tag practice">Practice</span></li>
+  <li><b>Agents rarely notice.</b> A headless test browser often uses a software renderer and reports whatever frame rate it gets. Benchmarks show the problem is usually not the agent's GPU code but CPU-side overhead. In the AA-3D benchmark, every model's median frame took under 1.3 ms of GPU time on the test machine. Those were relatively light scenes. <span class="tag verified">Verified</span></li>
+</ul>
+
+<h2>Draw calls: the CPU bottleneck</h2>
+<p>Each separate mesh with its own material usually costs at least one <b>draw call</b>. That is a command from JavaScript, through the browser's graphics layer (ANGLE on Windows translates WebGL to Direct3D 11), to the driver. Each call costs CPU time no matter how small the object is. Common rules of thumb <span class="tag practice">Practice</span>:</p>
+<ul>
+  <li>50–100 draw calls for mobile (Three.js community guidance, McCurdy 2021);</li>
+  <li>100–200 on low-end mobile, and thousands on desktop (<a href="https://developer.playcanvas.com/user-manual/optimization/guidelines/">PlayCanvas optimisation guidelines</a>).</li>
+</ul>
+<p>These numbers vary widely by device. Treat them as orders of magnitude, not limits.</p>
+<p>Three.js shows the count in <code>renderer.info.render.calls</code>. Every demo in this guide prints it in the HUD.</p>
+
+<h2>Trick 1: instancing</h2>
+<p>If 10,000 objects share the same geometry and material (buildings, trees, cars, windows, grass blades), draw them in <b>one call</b> with a per-instance transform matrix and colour. In Three.js: <code>new THREE.InstancedMesh(geometry, material, count)</code>, then <code>setMatrixAt(i, m)</code> and <code>setColorAt(i, c)</code>. The GPU loops over the instances itself.</p>
+<p>Related tools:</p>
+<ul>
+  <li><b>Merging</b> (<code>BufferGeometryUtils.mergeGeometries</code>): bake many static meshes into one. It is cheap to draw but cannot move objects individually.</li>
+  <li><b><code>BatchedMesh</code></b>: one call for <i>different</i> geometries that share a material, with per-object culling. See the <a href="https://threejs.org/examples/webgl_batch_lod_bvh.html">webgl_batch_lod_bvh example</a>. <span class="tag verified">Verified</span></li>
+</ul>
+
+<h2 id="demo-instancing">Try it: separate meshes vs one InstancedMesh</h2>
+<p>Set 20,000 objects and switch between the two modes. Watch the <i>draw calls</i> and <i>CPU time in render()</i> lines in the HUD. The triangle count is identical; only the number of calls changes. Building 20,000 separate meshes also takes a noticeable moment after you change the slider.</p>
+<div class="demo">
+  <div class="demo-head"><span class="live">LIVE</span> Draw calls vs instancing <span class="src">Three.js r186 · assets/js/demos/instancing.js</span></div>
+  <div class="demo-stage" id="instStage"><canvas></canvas><div class="hud"></div></div>
+  <div class="demo-controls">
+    <label><div class="row">Number of objects <span class="v" id="instNV"></span></div><input type="range" id="instN" min="100" max="30000" step="100" value="5000"></label>
+    <label>Mode <select id="instMode"><option value="instanced">One InstancedMesh (1 draw call)</option><option value="separate">Separate Mesh per object</option></select></label>
+    <label>Geometry <select id="instGeo"><option value="box">Box (12 triangles)</option><option value="sphere">Sphere (1,280 triangles)</option></select></label>
+  </div>
+  <p class="demo-note">In separate mode each object also gets its own material, as naive agent code often does, so nothing can be batched. Your numbers depend on your CPU, GPU and browser.</p>
+</div>
+
+<h2>Trick 2: level of detail (LOD)</h2>
+<p>A building 2 km away covers a few pixels; drawing its 5,000 triangles is waste. <b>LOD</b> swaps in simpler versions with distance: Three.js's <code>THREE.LOD</code> object, the official <a href="https://threejs.org/examples/webgl_lod.html">webgl_lod example</a>, or automatic simplification with <a href="https://github.com/zeux/meshoptimizer">meshoptimizer</a>. At the far end, distant buildings become flat "impostor" cards or merge into one block per district. Unreal's Nanite automates this with virtualised geometry; the web has nothing equivalent built in. <span class="tag practice">Practice</span></p>
+
+<h2>Trick 3: culling</h2>
+<ul>
+  <li><b>Frustum culling</b>: skip objects outside the camera's view pyramid. Three.js does it automatically per object (<code>frustumCulled = true</code> by default). It tests each object's bounding sphere. <span class="tag verified">Verified</span></li>
+  <li>Gotcha: an <code>InstancedMesh</code> is one object. If its bounding sphere is computed wrongly (for example after you move instances), the whole city can disappear at certain angles. Call <code>computeBoundingSphere()</code> after updating instances, or set <code>frustumCulled = false</code>.</li>
+  <li><b>Occlusion culling</b>: skip things hidden behind other things. That is very effective in street-level city views, but not built into Three.js. Engines like Unreal do it automatically.</li>
+  <li><b>Distance culling plus fog</b>: let fog swallow the far plane, and do not draw beyond it. The cheapest trick of all.</li>
+</ul>
+
+<h2>Trick 4: spend pixels wisely</h2>
+<ul>
+  <li><b>Pixel ratio.</b> Cap <code>setPixelRatio</code> at 1.5–2. A 4K laptop panel at ratio 2 means shading 8 million pixels per frame.</li>
+  <li><b>Post-processing</b> passes each touch every pixel, often several times. Bloom at half or quarter resolution looks the same. The official Three.js WebGPU city example runs bloom at quarter resolution. <span class="tag verified">Verified</span></li>
+  <li><b>Shadow maps.</b> Every shadow-casting light re-renders the scene. One sun with a 2048² map is the norm; avoid shadowed point lights.</li>
+  <li><b>Overdraw.</b> Transparent things (foliage cards, particles, glass) are drawn back to front and cannot skip hidden pixels. Big transparent planes are expensive.</li>
+  <li><b>Shader compile time.</b> The first frame can take seconds while the driver compiles shaders. The night-street project measured 34.9 s and 39.4 s to first frame on an RTX 4060 with a cold cache; over 95% of that was shader compilation, not geometry or textures. <span class="tag verified">Verified</span> (repo README, 2026-10-17)</li>
+</ul>
+
+<h2>Measuring</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Tool</th><th>What it tells you</th></tr></thead>
+<tbody>
+<tr><td><code>renderer.info</code></td><td>Draw calls, triangles, textures and programs in memory: the first numbers to log</td></tr>
+<tr><td><a href="https://github.com/mrdoob/stats.js">stats.js</a> or a hand-made FPS counter</td><td>Frame rate and milliseconds per frame</td></tr>
+<tr><td>Chrome or Edge DevTools → Performance</td><td>Where the CPU time goes: JavaScript, garbage collection, GPU waits</td></tr>
+<tr><td><a href="https://spector.babylonjs.com/">Spector.js</a></td><td>Captures one WebGL frame call by call, with every state and texture</td></tr>
+<tr><td><code>EXT_disjoint_timer_query_webgl2</code></td><td>GPU time per pass, where supported (often disabled for privacy)</td></tr>
+</tbody></table></div>
+
+<div class="callout good"><span class="callout-title">Prompt fragment that saves a lot of iteration</span>
+"Use <code>InstancedMesh</code> for anything repeated more than ~50 times. Keep total draw calls under 200 and print <code>renderer.info.render.calls</code> plus FPS in an on-screen HUD. Cap pixel ratio at 2. One shadow-casting directional light only." <span class="tag practice">Practice</span>: it makes the agent's own screenshots show the performance numbers.</div>
+
+<h2>Further reading</h2>
+<ul>
+  <li><a href="https://threejs.org/examples/webgl_instancing_performance.html">Three.js: instancing performance example</a>: compares merged, instanced and naive rendering.</li>
+  <li><a href="https://discoverthreejs.com/tips-and-tricks/">Discover three.js: tips and tricks</a>.</li>
+  <li><a href="https://developer.playcanvas.com/user-manual/optimization/guidelines/">PlayCanvas optimisation guidelines</a>: engine-neutral advice.</li>
+</ul>
+</main>
+<script src="assets/js/demos/instancing.js"></script>
+</body>
+</html>

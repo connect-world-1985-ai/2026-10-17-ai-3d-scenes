@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 · Recipe: procedural city and fly-over — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part III — Recipes</div>
+<h1>Recipe: procedural city, night lights and fly-over</h1>
+<p class="lead">The "huge city at night, camera gliding between towers" clip is the signature AI-3D demo. It looks like it needs thousands of hand-made buildings. In practice it needs a street grid, one box geometry drawn thousands of times, windows painted by a shader, a sky colour that changes with the hour, a few hundred moving lights, bloom, and a smooth camera spline. This page builds exactly that, live.</p>
+
+<h2>The pipeline</h2>
+<figure class="figure">
+<svg viewBox="0 0 860 150" role="img" aria-label="Procedural city pipeline">
+  <g font-size="12.5">
+    <rect x="10" y="40" width="120" height="66" rx="8" class="svg-box"/><text x="70" y="66" text-anchor="middle" class="svg-fg" font-weight="700">Street grid</text><text x="70" y="86" text-anchor="middle" class="svg-soft">blocks + roads</text>
+    <rect x="150" y="40" width="120" height="66" rx="8" class="svg-box"/><text x="210" y="66" text-anchor="middle" class="svg-fg" font-weight="700">Lots</text><text x="210" y="86" text-anchor="middle" class="svg-soft">split blocks 2×2, 3×3</text>
+    <rect x="290" y="40" width="130" height="66" rx="8" class="svg-acc"/><text x="355" y="66" text-anchor="middle" class="svg-fg" font-weight="700">Buildings</text><text x="355" y="86" text-anchor="middle" class="svg-soft">InstancedMesh boxes</text>
+    <rect x="440" y="40" width="130" height="66" rx="8" class="svg-acc"/><text x="505" y="66" text-anchor="middle" class="svg-fg" font-weight="700">Facade shader</text><text x="505" y="86" text-anchor="middle" class="svg-soft">windows from world pos</text>
+    <rect x="590" y="40" width="120" height="66" rx="8" class="svg-box"/><text x="650" y="66" text-anchor="middle" class="svg-fg" font-weight="700">Life</text><text x="650" y="86" text-anchor="middle" class="svg-soft">lamps, traffic</text>
+    <rect x="730" y="40" width="120" height="66" rx="8" class="svg-box"/><text x="790" y="66" text-anchor="middle" class="svg-fg" font-weight="700">Look</text><text x="790" y="86" text-anchor="middle" class="svg-soft">sky, fog, bloom, path</text>
+    <path d="M130 73 H146 M270 73 H286 M420 73 H436 M570 73 H586 M710 73 H726" class="svg-line" stroke-width="2"/>
+    <text x="430" y="135" text-anchor="middle" class="svg-soft">height grows towards the centre (a "downtown" falloff) + random variation from a seeded RNG</text>
+  </g>
+</svg>
+</figure>
+<ol>
+  <li><b>Street grid.</b> The simplest is a regular grid of square blocks separated by streets. More organic layouts use L-systems that grow roads from a population-density map (<a href="https://doi.org/10.1145/383259.383292">Parish &amp; Müller, SIGGRAPH 2001</a>) or tensor fields. <span class="tag verified">Verified</span></li>
+  <li><b>Lots and buildings.</b> Split each block into lots and give each lot a footprint and height. A <b>downtown falloff</b> (taller near the centre) and a rare "tower" multiplier give a skyline.</li>
+  <li><b>Instancing.</b> All buildings are one unit box drawn with per-instance scale, position and colour, so 3,000 buildings cost one draw call (<a href="05-performance.html">page 05</a>).</li>
+  <li><b>Facades in the shader.</b> Windows are not geometry: the fragment shader divides world position into 2.2 m × 3.2 m cells and paints a dark pane in each. A hash of the cell decides whether it is lit at night (<a href="04-shaders-sdf.html">page 04</a> shows the code).</li>
+  <li><b>Life.</b> Street lamps and cars are more instanced meshes; cars move along street lines, and the CPU rewrites their matrices each frame.</li>
+  <li><b>Look.</b> Day and night come from one sun-elevation value that drives sky colour, fog, light intensities, window emission, exposure and bloom strength together.</li>
+</ol>
+
+<h2 id="demo-city">Try it: procedural city with day and night</h2>
+<p>Everything here is generated in code at load time: no models, no textures. Things to try:</p>
+<ul>
+  <li>Drag the time slider from 17:00 to 21:00 to watch the windows switch on and the bloom come up.</li>
+  <li>Switch the camera to <i>street level</i>.</li>
+  <li>Push blocks to 16 × 16 and check that it is still one draw call for all buildings.</li>
+  <li>Change the seed for a new city.</li>
+</ul>
+<div class="demo">
+  <div class="demo-head"><span class="live">LIVE</span> Procedural city: instancing + shader windows + traffic + fly-over <span class="src">Three.js r186 · assets/js/demos/city.js</span></div>
+  <div class="demo-stage" id="cityStage"><canvas></canvas><div class="hud"></div></div>
+  <div class="demo-controls">
+    <label><div class="row">Time of day <span class="v" id="cityTimeV"></span></div><input type="range" id="cityTime" min="0" max="24" step="0.05" value="20.25"></label>
+    <label><div class="row">Share of lit windows <span class="v" id="cityLitV"></span></div><input type="range" id="cityLit" min="0" max="1" step="0.01" value="0.45"></label>
+    <label><div class="row">Blocks <span class="v" id="cityBlocksV"></span></div><input type="range" id="cityBlocks" min="4" max="16" step="1" value="10"></label>
+    <label><div class="row">Downtown height <span class="v" id="cityHV"></span></div><input type="range" id="cityH" min="10" max="220" step="5" value="120"></label>
+    <label><div class="row">Building density <span class="v" id="cityDensV"></span></div><input type="range" id="cityDens" min="0.2" max="1" step="0.01" value="0.85"></label>
+    <label><div class="row">Seed <span class="v" id="citySeedV"></span></div><input type="range" id="citySeed" min="1" max="100" step="1" value="7"></label>
+    <label><div class="row">Cars <span class="v" id="cityCarsV"></span></div><input type="range" id="cityCars" min="0" max="1500" step="10" value="400"></label>
+    <label>Camera <select id="cityCam"><option value="fly">Fly-over (spline)</option><option value="street">Street level (straight path)</option><option value="orbit">Orbit (drag)</option></select></label>
+    <label>Camera speed <input type="range" id="citySpeed" min="0" max="4" step="0.1" value="1"></label>
+    <label class="check"><input type="checkbox" id="cityTraffic" checked> Traffic</label>
+    <label class="check"><input type="checkbox" id="cityBloom" checked> Bloom</label>
+  </div>
+  <p class="demo-note">Car headlights are white instances heading one way and tail lights are red instances heading the other; at night they are pushed above 1.0 so bloom catches them. The sun casts one shadow map over the whole city. It gets blocky up close: the resolution-versus-coverage trade-off from <a href="03-materials-light.html">page 03</a>.</p>
+</div>
+
+<h2>What makes the difference between "boxes" and "city"</h2>
+<p>Lighting and atmosphere give most of the gain; building geometry gives the least. This is my reading of the official examples and classic demos. <span class="tag inference">Inference</span> In order of payoff:</p>
+<ol>
+  <li><b>Night.</b> Darkness hides the simplicity of geometry; lit windows and street lights give scale and life. Pixel City (2009) was "mostly made of lights and suggestions", with no assets at all. <span class="tag verified">Verified</span></li>
+  <li><b>Fog and atmospheric perspective</b>: distant buildings fade towards the sky colour, which reads as kilometres of depth.</li>
+  <li><b>Height distribution</b>: a believable skyline (downtown cluster, a few landmarks) beats random heights.</li>
+  <li><b>Bloom</b> on emissive windows, lamps and car lights.</li>
+  <li><b>Variation</b>: colour, roof heights, setbacks (stacked boxes), rooftop clutter (water tanks, AC units).</li>
+  <li><b>Ground detail</b>: sidewalks, lane markings, kerbs. This matters at street level, not from the air.</li>
+  <li><b>Interior mapping</b> (<a href="https://proun-game.com/Oogst3D/CODING/InteriorMapping/InteriorMapping.pdf">van Dongen 2008</a>): fake rooms behind each window by raycasting virtual floors and walls in the shader. Cost is constant in the number of rooms. A strong upgrade for street-level views. <span class="tag verified">Verified</span></li>
+</ol>
+
+<h2 id="ladder">City quality ladder</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Rung</th><th>Technique</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>~20,000 random boxes merged into one mesh; no roads, overlaps</td><td>mrdoob "City" (2013) and Jerome Etienne's <a href="https://github.com/jeromeetienne/threex.proceduralcity">"procedural city in 100 lines"</a> (2013-08-02) <span class="tag verified">Verified</span></td></tr>
+<tr><td>2</td><td>Grid of blocks with roads and varied heights</td><td>Pixel City (Shamus Young, 2009); the Three.js <code>CityGenerator</code> layout</td></tr>
+<tr><td>3</td><td>Procedural window textures, emissive night lights, fog</td><td>Pixel City; <b>this page's demo</b></td></tr>
+<tr><td>4</td><td>Instancing or merging, LOD, culling for 10⁴–10⁵ objects</td><td>This demo (instancing); <code>BatchedMesh</code> examples</td></tr>
+<tr><td>5</td><td>Street furniture, cars, pedestrians, sidewalks</td><td>Three.js <code>CityGenerator</code> street-furniture generators (lights, benches, hydrants, trees, cars, people) <span class="tag verified">Verified</span></td></tr>
+<tr><td>6</td><td>PBR materials, physical sky, tone mapping, bloom, light probes</td><td>Official <a href="https://threejs.org/examples/webgpu_generator_city.html">webgpu_generator_city</a> (WebGPU, quarter-res bloom, ACES exposure 0.13) <span class="tag verified">Verified</span></td></tr>
+<tr><td>7</td><td>Interior mapping for windows</td><td>van Dongen 2008; widely used in games</td></tr>
+<tr><td>8</td><td>Grammar-based buildings (CGA shape) or organic road networks; WFC tile cities</td><td><a href="https://doi.org/10.1145/1179352.1141931">Müller et al. 2006</a> (basis of CityEngine); Townscaper; <a href="https://github.com/mxgmn/WaveFunctionCollapse">WFC</a> (25.4k stars)</td></tr>
+<tr><td>9</td><td>Real data: OSM extrusions or Google Photorealistic 3D Tiles</td><td><a href="01-taxonomy.html#route-5">Route 5</a></td></tr>
+<tr><td>10</td><td>Engine-scale procedural city with photoreal assets</td><td>Epic's City Sample, rebuilt in UE 5.8 PCG with Claude's assistance (2026-08-27) <span class="tag verified">Verified</span></td></tr>
+</tbody></table></div>
+<p>The new <b>official Three.js city generator</b> deserves a special mention. <code>examples/jsm/generators/CityGenerator.js</code> ships in npm <code>three@0.186.1</code> and lays out blocks with seeded skyscrapers and street furniture. Its example uses WebGPURenderer, a <code>SkyMesh</code> sky, <code>FirstPersonControls</code> and TSL procedural materials for windows and roads. <span class="tag verified">Verified</span> It is the strongest street-walk template built into the library, and agents that know about it can start from rung 5–6 instead of rung 1. <span class="tag inference">Inference</span></p>
+
+<h2>Real examples to study</h2>
+<ul>
+  <li><a href="https://github.com/StarKnightt/night-street">night-street</a> (MIT, 129 stars): a first-person photoreal street built by an agent from a long brief with <b>zero external assets</b>: buildings, asphalt, sky, sounds all in code. Five prompts are published verbatim. Note its 35–40 s shader-compile start-up. <span class="tag verified">Verified</span></li>
+  <li><a href="https://github.com/srizzon/git-city">Git City</a> (AGPL-3.0, 5,814 stars): GitHub profiles as buildings in a voxel city; the author reports 21k lines in 4 days with AI assistance. <span class="tag verified">Verified</span> (repo) / <span class="tag plausible">Plausible</span> (time claim)</li>
+  <li><a href="https://threejs.org/examples/webgpu_generator_city.html">webgpu_generator_city</a>: the official reference (needs a WebGPU-capable browser).</li>
+  <li>Pixel City write-up series by Shamus Young (<a href="https://www.shamusyoung.com/twentysidedtale/?p=2940">part 1, 2009</a>): the classic "how" for night cities.</li>
+</ul>
+
+<h2>Ready prompt (rung 3–4, browser)</h2>
+<div class="prompt-box">Create a single index.html (no build step) using Three.js r186 via an import map from a CDN.
+Make a procedural night city: 12×12 blocks of 24 m with 8 m streets, each block split into 2×2 or 3×3 lots,
+building height growing towards the centre (downtown up to 150 m) with a seeded RNG (seed in the URL hash).
+All buildings in ONE InstancedMesh of a unit box with per-instance colour.
+Windows: inject GLSL with material.onBeforeCompile into MeshStandardMaterial:
+2.2 m × 3.2 m cells from world position, dark glass, ~40% lit warm or cool at night via a hash of the cell index.
+Add instanced street lamps, 400 instanced cars moving along streets (white headlights one way, red tail lights the other).
+Time-of-day slider (0–24 h) driving sky colour, FogExp2 colour, sun, hemisphere light, window emission and bloom.
+Camera: a closed CatmullRomCurve3 fly-over between towers, plus an orbit mode.
+UnrealBloomPass + OutputPass, ACES tone mapping. HUD with draw calls, triangles and FPS.
+Keep draw calls under 50. Then open the page headlessly, check the console, screenshot at 13:00 and 21:00, and fix issues.</div>
+
+<div class="callout warn"><span class="callout-title">Typical failures in agent-made cities</span>
+<ul>
+  <li><b>Windows stretched or missing on some faces</b>: computing cells in object space after instance scaling, or using the wrong axis per face. Fix: world-space position and the object normal to choose the axis.</li>
+  <li><b>Buildings overlap roads</b>: placement without lots.</li>
+  <li><b>One draw call per building</b>: a separate <code>Mesh</code> each; 5k buildings at 15 fps.</li>
+  <li><b>City vanishes at certain angles</b>: a wrong bounding sphere on the <code>InstancedMesh</code>.</li>
+  <li><b>Everything glows</b>: bloom threshold too low, so lit walls bloom as well as lights.</li>
+  <li><b>Camera clips through towers</b>: a spline path not checked against building heights.</li>
+</ul></div>
+</main>
+<script src="assets/js/demos/city.js"></script>
+</body>
+</html>

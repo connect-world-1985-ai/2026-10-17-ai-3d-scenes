@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>16 · Directions for our next discussion — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part V — Doing it</div>
+<h1>Five directions for our next discussion</h1>
+<p class="lead">This guide maps the field. Each direction below goes deeper in one way. They are ordered from "most likely to give you something impressive soon" to "most strategic". For each: what we would do, what you would get, what it costs, and the open questions this research could not settle.</p>
+
+<h2 id="d1">1. Build one scene to "impressive", together</h2>
+<p><b>What:</b> pick one of the three scenes (my suggestion is the ocean, the shortest path to photoreal) and push it up the <a href="07-ocean.html#ladder">quality ladder</a> with an agent. We would record every prompt, turn, cost and screenshot.</p>
+<p><b>You get:</b> a real scene, and an honest measurement of the time and money "impressive" takes on your hardware, which this research could only estimate from other people's reports.</p>
+<p><b>Open questions:</b> where diminishing returns start; whether a Gerstner ocean or an FFT one on WebGPU is worth the extra work.</p>
+
+<h2 id="d2">2. Our own small benchmark: the same brief, several agents</h2>
+<p><b>What:</b> run the <a href="15-hands-on.html">starter prompts</a> through two or three agents (for example Claude Code, Codex and Cursor), using the same rules file, and compare blind.</p>
+<p><b>You get:</b> evidence for your own tooling choice instead of leaderboards. AA-3D's top four are statistically tied, and their sandbox differs from your setup.</p>
+<p><b>Open questions:</b> how to score fairly (blind votes, FPS, cost, number of human interventions); whether skills or rules files help (no controlled study exists, see <a href="11-agent-workflow.html">page 11</a>).</p>
+
+<h2 id="d3">3. Agent harness: give the agent better eyes</h2>
+<p><b>What:</b> turn this site's QA script into a reusable harness:</p>
+<ul>
+  <li>fixed camera presets;</li>
+  <li>console and FPS gates;</li>
+  <li>a contact sheet of screenshots;</li>
+  <li>an optional critic subagent;</li>
+  <li>deterministic video capture.</li>
+</ul>
+<p>Package it as a skill or an MCP tool.</p>
+<p><b>You get:</b> the part that the evidence most strongly links to quality, since early visual checks track rank closely in AA-3D. It is reusable across every 3D project.</p>
+<p><b>Open questions:</b> headless WebGPU on Windows; the right method to time frames (<code>readPixels</code> vs <code>gl.finish</code>, where sources conflict).</p>
+
+<h2 id="d4">4. Real places: a fly-over of a real city</h2>
+<p><b>What:</b> use 3D tiles (Google Photorealistic, or Cesium ion's open data) with <code>3DTilesRendererJS</code> or CesiumJS, with an agent writing the camera path and overlays.</p>
+<p><b>You get:</b> the most "wow per hour" of all routes, but with licence strings attached: no caching, required attribution, and promotional videos of at most 30 s.</p>
+<p><b>Open questions:</b> current Google pricing above the free cap (only a third-party source this time); whether your use is commercial; offline needs.</p>
+
+<h2 id="d5">5. Engine route: Unreal or Godot with MCP</h2>
+<p><b>What:</b> try Epic's experimental Unreal MCP (or Godot plus an MCP server) on a small street scene, in a throwaway project with security precautions.</p>
+<p><b>You get:</b> a feel for the high-fidelity ceiling (Lumen, Nanite, PCG). Compare that against how much harder it is for the agent to see and test its results there.</p>
+<p><b>Open questions:</b> hardware (32 GB RAM, 8–16 GB VRAM as a floor); how mature the MCP servers are; the security model (no authentication on Epic's server; the Blender MCP CVE).</p>
+
+<h2>Gaps in this research worth closing first</h2>
+<ul>
+  <li>No demo from <a href="12-one-prompt-truth.html">page 12</a> was re-run; "Verified" means the artefacts are public, not that results were reproduced.</li>
+  <li>No measured FPS for the same scene on integrated, discrete and mobile GPUs.</li>
+  <li>No current subscription prices for coding agents.</li>
+  <li>Headless WebGPU capture and Safari / Firefox behaviour from <code>file://</code> were not tested; this site was only tested in Chromium (Edge).</li>
+</ul>
+<p>The full list is on <a href="sources.html#gaps">Sources and method</a>.</p>
+
+<div class="callout idea"><span class="callout-title">My recommendation</span>Start with <b>1 + 3 together</b>: build the ocean scene while turning the screenshot loop into a reusable harness. Each makes the other better, and both pay off for directions 2, 4 and 5. <span class="tag inference">Inference</span></div>
+</main>
+</body>
+</html>

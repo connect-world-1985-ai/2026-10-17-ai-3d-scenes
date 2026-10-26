@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>14 · Decision framework, stacks and costs — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part V — Doing it</div>
+<h1>Decision framework, stacks and costs</h1>
+<p class="lead">Most people pick a tool first and a goal second. Reverse it. Five questions about <b>what you want to deliver</b> narrow the eight <a href="01-taxonomy.html">production routes</a> to one or two. Then pick a stack that matches your experience, and budget money and time with the measured numbers at the bottom of this page.</p>
+
+<h2>Five questions</h2>
+<figure class="figure">
+<svg viewBox="0 0 820 400" role="img" aria-label="Decision tree from deliverable to route">
+  <g font-size="13">
+    <rect x="290" y="10" width="240" height="40" rx="8" class="svg-acc"/><text x="410" y="35" text-anchor="middle" class="svg-fg" font-weight="700">What must people get?</text>
+    <rect x="20" y="90" width="230" height="44" rx="8" class="svg-box"/><text x="135" y="110" text-anchor="middle" class="svg-fg" font-weight="700">A link they can explore</text><text x="135" y="126" text-anchor="middle" class="svg-soft" font-size="12">interactive, in a browser</text>
+    <rect x="295" y="90" width="230" height="44" rx="8" class="svg-box"/><text x="410" y="110" text-anchor="middle" class="svg-fg" font-weight="700">A video or stills</text><text x="410" y="126" text-anchor="middle" class="svg-soft" font-size="12">nobody interacts</text>
+    <rect x="570" y="90" width="230" height="44" rx="8" class="svg-box"/><text x="685" y="110" text-anchor="middle" class="svg-fg" font-weight="700">A downloadable app or game</text><text x="685" y="126" text-anchor="middle" class="svg-soft" font-size="12">desktop, high fidelity</text>
+    <path d="M410 50 V70 H135 V86 M410 70 V86 M410 70 H685 V86" class="svg-line" stroke-width="1.6"/>
+
+    <rect x="20" y="170" width="230" height="40" rx="8" class="svg-box"/><text x="135" y="195" text-anchor="middle" class="svg-fg">A real place?</text>
+    <path d="M135 134 V166" class="svg-line" stroke-width="1.6"/>
+    <rect x="20" y="245" width="108" height="56" rx="8" class="svg-acc"/><text x="74" y="268" text-anchor="middle" class="svg-fg" font-weight="700">Route 5</text><text x="74" y="286" text-anchor="middle" class="svg-soft" font-size="12">geodata tiles</text>
+    <rect x="142" y="245" width="108" height="56" rx="8" class="svg-acc"/><text x="196" y="268" text-anchor="middle" class="svg-fg" font-weight="700">Route 1 / 2</text><text x="196" y="286" text-anchor="middle" class="svg-soft" font-size="12">three.js, shaders</text>
+    <path d="M100 210 L74 241 M170 210 L196 241" class="svg-line" stroke-width="1.6"/>
+    <text x="58" y="232" class="svg-soft" font-size="11">yes</text><text x="190" y="232" class="svg-soft" font-size="11">no</text>
+    <rect x="20" y="330" width="230" height="56" rx="8" class="svg-box"/><text x="135" y="352" text-anchor="middle" class="svg-fg">Photoreal real object?</text><text x="135" y="370" text-anchor="middle" class="svg-soft" font-size="12">→ Route 6 splats (+ Route 1)</text>
+    <path d="M135 301 V326" class="svg-line" stroke-width="1.6" stroke-dasharray="4 4"/>
+
+    <rect x="295" y="170" width="230" height="40" rx="8" class="svg-box"/><text x="410" y="195" text-anchor="middle" class="svg-fg">Physically exact light?</text>
+    <path d="M410 134 V166" class="svg-line" stroke-width="1.6"/>
+    <rect x="295" y="245" width="108" height="56" rx="8" class="svg-acc"/><text x="349" y="268" text-anchor="middle" class="svg-fg" font-weight="700">Route 4</text><text x="349" y="286" text-anchor="middle" class="svg-soft" font-size="12">Blender Cycles</text>
+    <rect x="417" y="245" width="108" height="56" rx="8" class="svg-acc"/><text x="471" y="268" text-anchor="middle" class="svg-fg" font-weight="700">Route 1 / 7</text><text x="471" y="286" text-anchor="middle" class="svg-soft" font-size="12">record / AI video</text>
+    <path d="M375 210 L349 241 M445 210 L471 241" class="svg-line" stroke-width="1.6"/>
+    <text x="333" y="232" class="svg-soft" font-size="11">yes</text><text x="465" y="232" class="svg-soft" font-size="11">no</text>
+
+    <rect x="570" y="170" width="230" height="40" rx="8" class="svg-box"/><text x="685" y="195" text-anchor="middle" class="svg-fg">32 GB RAM, 8 GB+ VRAM?</text>
+    <path d="M685 134 V166" class="svg-line" stroke-width="1.6"/>
+    <rect x="570" y="245" width="108" height="56" rx="8" class="svg-acc"/><text x="624" y="268" text-anchor="middle" class="svg-fg" font-weight="700">Route 3</text><text x="624" y="286" text-anchor="middle" class="svg-soft" font-size="12">Unreal</text>
+    <rect x="692" y="245" width="108" height="56" rx="8" class="svg-acc"/><text x="746" y="268" text-anchor="middle" class="svg-fg" font-weight="700">Route 3</text><text x="746" y="286" text-anchor="middle" class="svg-soft" font-size="12">Godot / Unity</text>
+    <path d="M650 210 L624 241 M720 210 L746 241" class="svg-line" stroke-width="1.6"/>
+    <text x="608" y="232" class="svg-soft" font-size="11">yes</text><text x="740" y="232" class="svg-soft" font-size="11">no</text>
+    <text x="410" y="360" text-anchor="middle" class="svg-soft" font-size="12">Combining routes is normal: Route 8, hybrids</text>
+  </g>
+</svg>
+</figure>
+<ol>
+  <li><b>Deliverable:</b> a link, a video, or an app? This one question removes most routes.</li>
+  <li><b>Real place or invented?</b> Real places mean geodata, with its licence terms (<a href="10-assets.html">page 10</a>).</li>
+  <li><b>Who must run it?</b> Phones and integrated GPUs mean WebGL2 and tight budgets (<a href="13-practical.html#mobile">page 13</a>).</li>
+  <li><b>How real must it look?</b> "Stylised but polished" is cheap for an agent; "photoreal" costs hours and needs good assets or captures.</li>
+  <li><b>How much will you iterate?</b> If the answer is "not much", choose the route where the agent can see its output easily: the browser.</li>
+</ol>
+<p><span class="tag inference">Inference</span>: my framework, built from the evidence in parts I–V.</p>
+
+<h2>The three scenes from this guide, mapped</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Scene</th><th>Fastest good result</th><th>Higher ceiling</th><th>Avoid at first</th></tr></thead>
+<tbody>
+<tr><td>City fly-over</td><td>Procedural three.js city with instancing and bloom (<a href="08-city.html#demo-city">demo</a>)</td><td>Unreal with PCG and store assets (Epic City Sample); real cities from 3D tiles</td><td>Generating every building as an AI mesh</td></tr>
+<tr><td>Ocean with sky and sun</td><td>three.js <code>Water</code> + <code>Sky</code> (<a href="07-ocean.html#demo-ocean3">demo</a>)</td><td>An FFT ocean on WebGPU; Blender for stills</td><td>Writing your own FFT ocean on day one</td></tr>
+<tr><td>Street walk</td><td>Kit-bashed CC0 modules + Octree collision (<a href="06-controls-collision.html#demo-walk">demo</a>)</td><td>Unreal or Godot with a character controller; Gaussian-splat captures</td><td>Photoreal at night without a reference</td></tr>
+</tbody></table></div>
+
+<h2 id="stacks">Stacks by experience</h2>
+<div class="cards">
+  <div class="card"><b>Beginner (first weekend)</b><br>One <code>index.html</code>, three.js pinned through an import map, CC0 assets from Poly Haven and Kenney, a coding agent (Claude Code, Codex or Cursor) plus a Playwright screenshot script. Host on GitHub Pages. <b>Cost:</b> your existing AI subscription.</div>
+  <div class="card"><b>Intermediate</b><br>Vite + three.js (or React Three Fiber), glTF pipeline with <code>gltf-transform</code> and KTX2, Rapier physics, Blender driven by headless Python scripts for asset preparation, deterministic video capture. <b>Cost:</b> still mostly free software.</div>
+  <div class="card"><b>Advanced</b><br>Unreal 5.8 with PCG and MCP (or Godot and Unity with MCP servers), Houdini for procedural assets, 3D tiles or splat captures, agent swarms with critics and persistent notes. <b>Cost:</b> a strong GPU, possible licences and API usage.</div>
+</div>
+<p><span class="tag practice">Practice</span> / <span class="tag inference">Inference</span></p>
+
+<h2 id="costs">What it costs (dated, with sources)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Item</th><th>Cost</th><th>Source, date</th></tr></thead>
+<tbody>
+<tr><td>Agent cost per scene, by model</td><td>$0.20 to $32.08 mean per scene; input is 69% of spend</td><td>AA-3D, 2026-10-12 <span class="tag verified">Verified</span></td></tr>
+<tr><td>Same benchmark, the top five</td><td>From $3.46 (GPT-6 Sol) to about 9.3× that (Claude Fable 5.1)</td><td>AA-3D <span class="tag verified">Verified</span></td></tr>
+<tr><td>Fixed-prompt evaluation</td><td>$0.22 to $2.67 per eval for two near-equal models</td><td>threejseval.com, 2026-10-17 <span class="tag verified">Verified</span></td></tr>
+<tr><td>three.js, Babylon, PlayCanvas engine, Godot, Blender</td><td>Free and open source (MIT, Apache-2.0, MIT, MIT, GPL)</td><td>GitHub API <span class="tag verified">Verified</span></td></tr>
+<tr><td>Unreal Engine</td><td>Free to start; 5% of lifetime gross per product above $1M; $1,850 per seat per year for non-game companies above $1M revenue</td><td>Epic licence and FAQ <span class="tag verified">Verified</span></td></tr>
+<tr><td>Unity 6</td><td>No runtime fee; Unity AI at $10 per month for 1,000 credits on Personal</td><td>Unity <span class="tag verified">Verified</span></td></tr>
+<tr><td>Houdini Indie</td><td>$299 per year (one SideFX page shows $269)</td><td>Conflict <span class="tag unverified">Unverified</span></td></tr>
+<tr><td>CC0 assets (Poly Haven, ambientCG, Kenney)</td><td>Free</td><td><a href="10-assets.html">Page 10</a> <span class="tag verified">Verified</span></td></tr>
+<tr><td>AI mesh generators</td><td>About $0.33–$0.75 per generation via API (Sloyd, Rodin); Meshy $20–$100 per month</td><td>Vendor pricing pages <span class="tag verified">Verified</span> (Rodin per-generation figure is my arithmetic)</td></tr>
+<tr><td>Google Photorealistic 3D Tiles</td><td>1,000 root requests per month free; about $6 per 1,000 above that</td><td>Google (free cap) <span class="tag verified">Verified</span>; price from a third party <span class="tag practice">Practice</span></td></tr>
+<tr><td>Cesium ion</td><td>Free Community plan (non-commercial); Commercial $149 per month</td><td>cesium.com <span class="tag verified">Verified</span></td></tr>
+<tr><td>Hosting</td><td>Free tiers suffice for procedural scenes</td><td><a href="13-practical.html#hosting">Page 13</a> <span class="tag verified">Verified</span></td></tr>
+<tr><td>Hardware for Unreal</td><td>About 32 GB RAM and 8–16 GB VRAM as a practical floor; City Sample about 90 GB of disk</td><td><span class="tag practice">Practice</span></td></tr>
+</tbody></table></div>
+<div class="callout warn"><span class="callout-title">Not covered</span>I did not research subscription prices for coding agents (Claude, ChatGPT, Cursor, Gemini plans). They change often, and the benchmarks above report costs at API list prices. Check current plans yourself. A long agent run on a flat-rate plan may hit usage limits rather than cost more money.</div>
+
+<h2>Time budget</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Target</th><th>Typical agent and human time</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td>A working small scene, decent look</td><td>Minutes to an hour</td><td>AA-3D: GPT-6 Astra had a first full page after 6 minutes. Single-file benchmarks.</td></tr>
+<tr><td>A polished interactive scene</td><td>1–3 hours of agent time</td><td>AA-3D medians of 60–151 minutes for the top five; Karpathy's run was about 2 h</td></tr>
+<tr><td>A photoreal walkable district</td><td>Days, many sessions</td><td>night-street, LAAS, Git City (4 days)</td></tr>
+</tbody></table></div>
+<p><span class="tag verified">Verified</span> (sources on <a href="12-one-prompt-truth.html">page 12</a>)</p>
+</main>
+</body>
+</html>

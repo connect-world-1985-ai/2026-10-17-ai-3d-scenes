@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 · World recipes: terrain, atmosphere, vegetation, crowds, camera — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part III — Recipes</div>
+<h1>World recipes: terrain, atmosphere, vegetation, crowds, camera</h1>
+<p class="lead">Oceans and cities get the attention, but what makes a scene feel like a <i>place</i> is everything around them: ground that rolls away, air you can see through, a sun that moves, grass that sways, things that move on their own, and a camera that behaves like a person or a drone. Each recipe below has a simple version an agent gets right on the first try, and the upgrades that make the difference.</p>
+
+<h2>Terrain</h2>
+<p>Terrain is a <b>heightfield</b>, <i>y = f(x, z)</i>, usually fBm noise (<a href="04-shaders-sdf.html">page 04</a>). Two ways to draw it:</p>
+<ul>
+  <li><b>Displaced mesh</b>: a <code>PlaneGeometry</code> grid with heights set on the CPU or in the vertex shader. Simple, works with normal lighting and shadows. See <a href="https://threejs.org/examples/webgl_geometry_terrain.html">webgl_geometry_terrain</a> and <a href="https://threejs.org/examples/webgpu_tsl_procedural_terrain.html">webgpu_tsl_procedural_terrain</a>. <span class="tag verified">Verified</span></li>
+  <li><b>Raymarched heightfield</b>: no mesh, unlimited detail, as in iq's Elevated and Rainforest. Expensive per pixel.</li>
+</ul>
+<p>Inigo Quilez's <a href="https://iquilezles.org/articles/terrainmarching/">terrain article</a> gives the standard recipe <span class="tag verified">Verified</span>:</p>
+<ul>
+  <li>colour by <b>altitude and slope</b> (the normal's y): grass on flat ground, rock on steep slopes, snow high up;</li>
+  <li>randomise the thresholds with noise;</li>
+  <li>light with a warm sun plus a dimmer bluish sky fill;</li>
+  <li>add distance fog.</li>
+</ul>
+<p><b>Upgrades:</b></p>
+<ul>
+  <li>Erosion-like noise (ridged or derivative fBm).</li>
+  <li>Texture splatting with tiling PBR textures (rock, grass, dirt) blended by slope; triplanar mapping so cliffs do not stretch.</li>
+  <li>Level of detail (geometry clipmaps or chunked quadtrees) for kilometres of view.</li>
+  <li>Real elevation data (DEM) via CesiumJS or BlenderGIS (<a href="01-taxonomy.html#route-5">route 5</a>).</li>
+</ul>
+
+<h2>Fog and atmosphere</h2>
+<ul>
+  <li><b>Distance fog</b>: <code>scene.fog = new THREE.Fog(color, near, far)</code> (linear) or <code>FogExp2(color, density)</code>, i.e. exponential extinction <code>exp(-d·density)</code>. Nearly free; it also hides the far clip plane and LOD pops. <span class="tag verified">Verified</span></li>
+  <li><b>Match the sky.</b> The fog colour must equal the sky colour at the horizon in the view direction, otherwise you get a grey band. That is the single most common fog bug, and the one fixed while building this guide's wave toy. <span class="tag practice">Practice</span></li>
+  <li><b>Height fog</b>: denser near the ground, as in valleys and city haze. Official TSL examples: <code>webgpu_fog_height</code> and <code>webgpu_custom_fog</code>.</li>
+  <li><b>Sun-aware fog</b>: tint fog towards the sun colour when looking at the sun. One extra line, big payoff at golden hour.</li>
+  <li><b>Volumetric light</b> ("god rays", lamp cones): raymarch through a fog volume in a post pass, or fake it with additive cones. The night-street project uses volumetric lamp cones in its brief. <span class="tag verified">Verified</span></li>
+  <li><b>Physical atmosphere</b> (Bruneton, Hillaire) gives correct horizon colour, aerial perspective and sunsets from one model. See the sky table on <a href="07-ocean.html">page 07</a>.</li>
+</ul>
+
+<h2>Day and night</h2>
+<p>Drive everything from one parameter: <b>sun elevation</b>. The <a href="08-city.html#demo-city">city demo</a> does exactly this. A single <code>sin()</code> of the hour feeds:</p>
+<ul>
+  <li><b>Sky and fog colour</b>: blend day, dusk and night colours (or move the <code>Sky</code> add-on's sun).</li>
+  <li><b>Sun</b>: direction, intensity and colour (white at noon, orange near the horizon, off below it).</li>
+  <li><b>Ambient</b>: the hemisphere light dims but never goes to zero (moonlight and sky glow).</li>
+  <li><b>Environment map</b>: re-bake it with <code>PMREMGenerator</code> when the sky changes. That is expensive, so only do it when the sun moves noticeably. <span class="tag verified">Verified</span> (official ocean example)</li>
+  <li><b>Emissive</b>: windows, street lamps, neon and car lights fade in as the sun sets.</li>
+  <li><b>Exposure and bloom</b>: a camera adapts; bloom grows at night.</li>
+</ul>
+<p>Stars, a moon and a light-pollution glow at the horizon finish the night look. The night-street brief asks for a "deep dark blue-orange city sky from light pollution" rather than black. <span class="tag verified">Verified</span></p>
+
+<h2>Vegetation</h2>
+<ul>
+  <li><b>Trees and bushes</b> at scale: instanced low-poly models, or <b>billboards</b> (camera-facing cards) and <b>impostors</b> (pre-rendered views) for distance. Free CC0 tree models: Quaternius, KayKit, Poly Haven (<a href="10-assets.html">page 10</a>).</li>
+  <li><b>Grass</b>: thousands of instanced blades with wind in the vertex shader (scrolling noise bends the tip more than the base). The reference is Ghost of Tsushima's GDC 2021 talk (Eric Wohllaib, <a href="https://www.youtube.com/watch?v=Ibe1JBF5i5Y">video</a>):
+    <ul>
+      <li>each blade is a cubic Bézier curve, with 15 vertices at high LOD and 7 at low;</li>
+      <li>compute shaders generate the blades and indirect draws render them. <span class="tag verified">Verified</span></li>
+    </ul>
+    The browser version: an <code>InstancedMesh</code> of blade strips, or the WebGPU compute path.</li>
+  <li><b>Scattering</b>: place by noise, slope and altitude; avoid roads and building footprints. The official <a href="https://threejs.org/examples/webgl_instancing_scatter.html">webgl_instancing_scatter</a> example scatters on a surface.</li>
+  <li>Watch <b>overdraw</b>: alpha-tested leaves are expensive (<a href="05-performance.html">page 05</a>).</li>
+</ul>
+
+<h2>Crowds and traffic</h2>
+<ul>
+  <li><b>Traffic</b>: cars follow lane splines or grid lines, with a speed per car and simple "don't hit the car ahead" spacing. At night, render only the lights (the city demo does this). Traffic lights cycling through phases add life cheaply.</li>
+  <li><b>Pedestrians and flocks</b>: Reynolds' <b>boids</b> (<a href="https://www.red3d.com/cwr/papers/1987/boids.html">SIGGRAPH 1987</a>) and his steering behaviours (GDC 1999: seek, flee, arrival, path following, flow fields, flocking = separation + alignment + cohesion). <span class="tag verified">Verified</span> GPU versions: <a href="https://threejs.org/examples/webgl_gpgpu_birds.html">webgl_gpgpu_birds</a>.</li>
+  <li><b>Animated people</b>: skinned glTF characters are heavy. Crowds use instanced low-poly figures with a shader-driven walk cycle, or vertex-animation textures. Mixamo animations forbid AI/ML training use. Check the licence (<a href="10-assets.html">page 10</a>).</li>
+  <li>Unreal's City Sample uses its Mass AI framework for crowds and traffic, which is far beyond what a web demo does. <span class="tag verified">Verified</span></li>
+</ul>
+
+<h2 id="camera-paths">Cinematic camera paths vs free walking</h2>
+<div class="table-wrap"><table>
+<thead><tr><th></th><th>Scripted path (fly-over)</th><th>Free walk (first-person)</th></tr></thead>
+<tbody>
+<tr><td>How</td><td><code>CatmullRomCurve3</code> through key points; each frame <code>position = curve.getPointAt(t)</code>, <code>lookAt(getPointAt(t + δ))</code></td><td>Pointer lock + WASD + capsule collision (<a href="06-controls-collision.html">page 06</a>)</td></tr>
+<tr><td>Looks</td><td>Like a drone shot; the author controls every frame</td><td>Like a game; quality must hold from every angle</td></tr>
+<tr><td>Hides</td><td>Unfinished back sides, empty areas, LOD pops, collision</td><td>Nothing: every gap is visible</td></tr>
+<tr><td>Agent difficulty</td><td>Low</td><td>Medium to high</td></tr>
+<tr><td>Recording to video</td><td>Trivial and deterministic</td><td>Needs input scripting</td></tr>
+</tbody></table></div>
+<p>Three.js's <code>CatmullRomCurve3</code> defaults to the <b>centripetal</b> variant, which is proven never to form cusps or self-intersections within a segment (<a href="https://doi.org/10.1016/j.cad.2010.08.008">Yuksel, Schaefer and Keyser 2011</a>). <span class="tag verified">Verified</span> Use <code>getPointAt</code> (arc-length) rather than <code>getPoint</code>, or speed varies along the curve. For a filmic feel, ease in and out, keep the horizon level, aim the camera slightly ahead and down, and avoid pitch changes faster than the eye can follow.</p>
+<div class="callout idea"><span class="callout-title">How to read a demo's camera</span>A perfectly smooth glide that never stops, never looks backwards and never lets the viewer take over is a strong sign of a scripted path. That is completely legitimate, but it hides a lot. Ask for the live link and try to walk off the path. <span class="tag inference">Inference</span></div>
+
+<h2>Ready prompt (terrain + day/night)</h2>
+<div class="prompt-box">Single index.html, Three.js r186 via CDN import map, no build step.
+Procedural island: 512×512 PlaneGeometry (2 km) displaced on the CPU with 6-octave fBm plus a radial falloff to sea level.
+Colour in a MeshStandardMaterial onBeforeCompile shader by altitude and slope (sand, grass, rock, snow), with noise-jittered thresholds.
+Water plane at y=0 with the three.js Water add-on and a procedurally generated normal map (no texture files).
+Sky add-on; a time-of-day slider moves the sun, re-bakes a PMREM environment map only when the sun moved > 1°,
+and sets FogExp2 colour from the horizon sky colour. 3,000 instanced low-poly trees placed on grass slopes only.
+Camera: a centripetal CatmullRomCurve3 fly-over that never goes below 30 m above the terrain, plus an orbit toggle.
+HUD: FPS and draw calls (keep under 30). Verify headlessly with screenshots at 07:00, 13:00 and 19:30 and fix issues.</div>
+</main>
+</body>
+</html>

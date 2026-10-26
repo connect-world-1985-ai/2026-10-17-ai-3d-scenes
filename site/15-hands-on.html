@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>15 · Hands-on starter projects — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part V — Doing it</div>
+<h1>Hands-on starter projects</h1>
+<p class="lead">Four projects, ordered by difficulty. Each has a ready prompt for a coding agent (Claude Code, Codex, Cursor or similar), the iteration loop to expect, and the pitfalls the earlier pages warned about. Start by copying the shared rules file into an empty folder. It pins versions, bans outdated APIs and sets up the screenshot loop that AA-3D found separates good results from bad ones.</p>
+
+<h2 id="rules">Step 0: a shared rules file</h2>
+<p>Save this as <code>AGENTS.md</code> (Codex, Cursor), <code>CLAUDE.md</code> (Claude Code), or both, in the project folder:</p>
+<div class="prompt-box"># 3D scene project rules
+- Single static site, no build step. Three.js 0.186.1 via an import map:
+  "three": "https://unpkg.com/three@0.186.1/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.186.1/examples/jsm/"
+  Same version for both. Never load three.min.js or any second copy of three.
+- Banned (removed or renamed): THREE.Geometry, outputEncoding, sRGBEncoding, texture.encoding,
+  physicallyCorrectLights, useLegacyLights, PCFSoftShadowMap. Use outputColorSpace / SRGBColorSpace.
+- Renderer: WebGLRenderer, ACESFilmic or AgX tone mapping, pixel ratio clamped to 1.5.
+- Always set scene.environment (PMREM from RoomEnvironment or the sky) so PBR is never black.
+- Show a small HUD: FPS, draw calls (renderer.info.render.calls), triangles.
+- URL parameters for reproducible shots: ?cam=NAME  ?t=SECONDS  ?seed=N  ?q=low|high  ?freeze=1
+- Assets: CC0 only (Poly Haven, ambientCG, Kenney). Record every asset in ASSETS.md with URL + licence.
+- Test loop after EVERY change: run `node shot.mjs` (Playwright). It opens the page via http://localhost,
+  fails on any console error, and saves screenshots for each ?cam= preset into shots/.
+  Look at the screenshots before claiming anything works.
+- Keep NOTES.md: what you tried, what failed, current known issues. Never delete a feature to fix a bug
+  without saying so.</div>
+<p>Then ask the agent to create <code>shot.mjs</code> first: "Write <code>shot.mjs</code>: start a static server on port 8080, open each <code>?cam=</code> preset in headless Chromium with <code>--enable-unsafe-swiftshader</code>, wait 3 s, print console errors and the HUD text, save PNGs to <code>shots/</code>, and exit with code 1 on any error." <span class="tag practice">Practice</span>, the same loop used to check this site.</p>
+<div class="callout"><span class="callout-title">Why localhost rather than file://</span>This site is built to open from <code>file://</code>, but your projects should use a local server (<code>npx serve</code>, <code>python -m http.server</code>). Loading glTF and textures with <code>fetch</code>, and WebGPU in some browsers, fail or behave differently from <code>file://</code>.</div>
+
+<h2 id="p1">Project 1: Ocean at golden hour (about 1 hour)</h2>
+<p><b>Goal:</b> a realistic ocean with sky, sun and reflections that you can steer with sliders, as on <a href="07-ocean.html">page 07</a>. <b>Route:</b> 1, three.js.</p>
+<div class="prompt-box">Read AGENTS.md first and follow it.
+Build index.html: an open ocean at golden hour using three/addons Water.js (with waternormals.jpg from the
+three.js examples on the same CDN version) and Sky.js. Sun elevation 4°, azimuth 180°. The sun direction
+must drive both the Sky uniforms and the Water sunDirection, and scene.environment must be regenerated
+from the sky with PMREMGenerator whenever the sun moves.
+Camera: OrbitControls, start 30 m above the water looking at the horizon, clamp so the camera never goes
+under the water. Add a floating 2 m buoy that bobs with a sine.
+UI (lil-gui from three/addons): sun elevation, azimuth, water distortion, size, exposure.
+?cam presets: horizon, low (2 m above water), high (200 m), sunset (elevation 1°).
+Done when: 0 console errors, all 4 screenshots look like a real photo of the sea (no visible tiling at the
+horizon, sun reflection path visible, sky and water colours match), 60 fps on my GPU.</div>
+<p><b>Iteration loop to expect:</b></p>
+<ol>
+  <li>A first render with the wrong normal map path, a black or white sky, or wrong colours. Fix it from the console error and the screenshot.</li>
+  <li>Exposure and tone mapping tuning: the sky blows out at a low sun.</li>
+  <li>Horizon tiling; ask for a larger <code>size</code> and fog matched to the sky colour.</li>
+  <li>Optional: replace <code>Water.js</code> with Gerstner waves for real wave motion. That is a second session; see the <a href="07-ocean.html#ladder">quality ladder</a>.</li>
+</ol>
+<p><b>Pitfalls:</b> <code>Water.js</code> is flat geometry, so the waves are a normal-map illusion and the buoy cannot follow them unless you add a wave function. The WebGPU variants (<code>WaterMesh</code>, <code>SkyMesh</code>) are different classes; do not mix them with <code>WebGLRenderer</code>.</p>
+
+<h2 id="p2">Project 2: Procedural night city fly-over with video (2–4 hours)</h2>
+<p><b>Goal:</b> a procedural night city with lit windows, traffic and a smooth fly-over exported to MP4, as on <a href="08-city.html">page 08</a>. <b>Route:</b> 1, three.js, plus deterministic capture.</p>
+<div class="prompt-box">Read AGENTS.md first and follow it.
+Build a procedural night city in index.html. Grid of 12×12 blocks (90 m), streets 18 m. Buildings: one
+InstancedMesh of boxes per material (max 3 draw calls for all buildings), heights from a seeded noise so
+the centre is taller (max 220 m). Windows: a procedural shader on the facades (no textures), random lit
+windows driven by seed and time of day. Streets: car head/tail lights as one InstancedMesh of small
+emissive boxes moving along the lanes. Bloom via EffectComposer + UnrealBloomPass, subtle (no white-out).
+Camera: a CatmullRomCurve3 fly-over path, 60 s loop, never closer than 15 m to any building.
+The scene must take time as an input: render(t) with no Date.now/performance.now inside, so I can capture
+deterministically. Add ?t=, ?seed=, ?cam=fly|street|top and keys 1/2/3.
+Then add record.mjs: Playwright opens ?capture=1, steps t from 0 to 60 s at 60 fps, saves each frame as
+PNG into frames/, and prints the ffmpeg command to make an MP4.
+Done when: 0 errors, < 20 draw calls total, screenshots at t=0,20,40 look like a real night aerial photo
+(dark sky, warm windows, no blown-out bloom), and the video plays smoothly.</div>
+<p><b>Iteration loop to expect:</b></p>
+<ol>
+  <li>Hundreds of draw calls (one mesh per building). Point at the HUD and insist on instancing.</li>
+  <li>Bloom whites everything out. Lower the bloom strength and emissive values and raise the threshold; this happened while building this site's demo.</li>
+  <li>The camera clips through towers; add a height clamp along the path.</li>
+  <li>Frame capture runs slowly in software GL. That is fine: the deterministic loop keeps the video smooth (<a href="13-practical.html#video">page 13</a>).</li>
+</ol>
+<p><b>Pitfalls:</b> <code>EffectComposer</code> resets <code>renderer.info</code> per pass, so set <code>renderer.info.autoReset = false</code> or the HUD shows 1 draw call. Do not publish a video of Google 3D tiles longer than 30 s (<a href="10-assets.html">page 10</a>); this project avoids that by being procedural.</p>
+
+<h2 id="p3">Project 3: Walk a street at dusk (half a day to 2 days)</h2>
+<p><b>Goal:</b> a first-person walk down a city street that you cannot walk through, built from CC0 modules, as on <a href="06-controls-collision.html">page 06</a>. <b>Route:</b> 1, three.js, plus assets.</p>
+<div class="prompt-box">Read AGENTS.md first and follow it.
+Build a first-person walk down a 200 m city street at dusk. Use CC0 kits only: Kenney's City Kit series
+(https://kenney.nl/assets/series:City: buildings, road tiles; use the GLB files) and Poly Haven for 2-3 props and one dusk HDRI. Download them into assets/,
+convert to GLB if needed, list each in ASSETS.md. Kit-bash both sides of the street from the modules
+with seeded variation; street lights every 25 m (only 4 real PointLights near the player, the rest are
+emissive + baked glow sprites).
+Controls: PointerLockControls + WASD + Shift run (1.4 m/s walk, 3.1 m/s run), eye height 1.7 m,
+capsule collision with three/addons Octree built from the static meshes, gravity and a small jump.
+Because pointer lock needs a real click, add ?auto=walk which walks the street on a scripted path so
+shot.mjs can test movement and collision. Add ?cam=start|middle|end.
+Done when: 0 errors, the scripted walk never passes through a wall or falls through the floor (log the
+min and max player y), screenshots look like a real street at dusk, and fps ≥ 60 at q=high on my GPU.</div>
+<p><b>Iteration loop to expect:</b></p>
+<ol>
+  <li>Asset paths and scale: Kenney units differ from metres, so ask the agent to normalise to a 3 m storey.</li>
+  <li>Collision bugs: tunnelling at run speed. Ask for sub-steps.</li>
+  <li>Lighting looks flat and game-like. Iterate with reference photos, and add fog, an HDRI environment and SSAO if your GPU allows.</li>
+  <li>Expect the "photoreal" level to need many sessions; night-street took a long brief, a critic loop and hours.</li>
+</ol>
+<p><b>Pitfalls:</b> too many real lights (each costs shader work, and shadows multiply it); textures over 2048 on mobile; licence mix-ups when an agent finds "free" assets on random sites. Keep CC0-only in the rules.</p>
+
+<h2 id="p4">Project 4: A path-traced ocean still in Blender (about 1 hour, optional)</h2>
+<p><b>Goal:</b> compare real-time with offline rendering of the same subject. <b>Route:</b> 4, Blender headless.</p>
+<div class="prompt-box">Write build_ocean.py for Blender 5.x, run headless with:
+  blender -b --python build_ocean.py -- --out renders/ocean.png --samples 128
+It must: create a plane with the Ocean modifier (resolution 12, size 400 m, wave scale 2), a principled
+water material (IOR 1.333, roughness 0.05), a physical Sky Texture in the World (sun elevation 4°; first
+print which sky types this Blender version offers and pick the physically based one), a camera 6 m above
+the water facing the sun with a 35 mm lens, Cycles with GPU if available (else CPU) and denoising, AgX
+view transform. Print the render time. Do not use any add-on or MCP server.
+Done when: the PNG exists, looks like a photo of the sea at sunset, and the script runs twice with the
+same output.</div>
+<p><b>Iteration loop to expect:</b> run the script, look at the PNG, adjust; usually 3–6 rounds. No live editor connection is needed, which keeps it safe. <b>Pitfalls:</b> the Blender Python API changes between versions, so name the version; CPU Cycles renders can take minutes; MCP servers that run arbitrary Python inside Blender are a security risk (<a href="11-agent-workflow.html#mcp">page 11</a>).</p>
+
+<h2>How to review the agent's work</h2>
+<ul>
+  <li>Open the screenshots in <code>shots/</code> yourself after every few agent turns.</li>
+  <li>Check the HUD: FPS, draw calls and triangles against the budgets on <a href="05-performance.html">page 05</a>.</li>
+  <li>Read <code>NOTES.md</code> and <code>ASSETS.md</code>: the agent's memory and your licence record.</li>
+  <li>Commit after each good state, so you can roll back when an "improvement" breaks things.</li>
+</ul>
+</main>
+</body>
+</html>

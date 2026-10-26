@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · Taxonomy of production routes — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part I — The landscape</div>
+<h1>Eight ways an "AI-made 3D scene" gets made</h1>
+<p class="lead">Two clips can look the same and have nothing in common underneath. One is a few hundred lines of JavaScript written by an agent. Another is Google's photogrammetry mesh of Tokyo, a Gaussian-splat scan, or an AI video with no 3D in it at all. The useful first question is not "which model?" but <b>where do the pixels come from?</b></p>
+
+<figure class="figure">
+<svg viewBox="0 0 860 360" role="img" aria-label="Where the pixels come from: four families of routes">
+  <text x="430" y="28" text-anchor="middle" class="svg-fg" font-size="17" font-weight="700">Where do the pixels come from?</text>
+  <g font-size="13">
+    <rect x="20" y="50" width="195" height="290" rx="10" class="svg-acc"/>
+    <text x="117" y="74" text-anchor="middle" class="svg-fg" font-weight="700">Geometry the agent writes</text>
+    <text x="117" y="94" text-anchor="middle" class="svg-soft" font-size="12">code → GPU draws triangles / SDFs</text>
+    <rect x="34" y="108" width="167" height="42" rx="6" class="svg-box"/><text x="117" y="134" text-anchor="middle" class="svg-fg">1 · Browser real-time</text>
+    <rect x="34" y="158" width="167" height="42" rx="6" class="svg-box"/><text x="117" y="184" text-anchor="middle" class="svg-fg">2 · Pure shader art</text>
+    <rect x="34" y="208" width="167" height="42" rx="6" class="svg-box"/><text x="117" y="234" text-anchor="middle" class="svg-fg">3 · Game engine via agent</text>
+    <rect x="34" y="258" width="167" height="42" rx="6" class="svg-box"/><text x="117" y="284" text-anchor="middle" class="svg-fg">4 · Offline Blender</text>
+    <text x="117" y="326" text-anchor="middle" class="svg-soft" font-size="12">fully interactive, editable</text>
+
+    <rect x="232" y="50" width="195" height="290" rx="10" class="svg-box"/>
+    <text x="329" y="74" text-anchor="middle" class="svg-fg" font-weight="700">Geometry from the world</text>
+    <text x="329" y="94" text-anchor="middle" class="svg-soft" font-size="12">measured, then streamed</text>
+    <rect x="246" y="108" width="167" height="42" rx="6" class="svg-acc"/><text x="329" y="134" text-anchor="middle" class="svg-fg">5 · Geodata / 3D tiles</text>
+    <rect x="246" y="158" width="167" height="42" rx="6" class="svg-acc"/><text x="329" y="184" text-anchor="middle" class="svg-fg">6 · Captured reality</text>
+    <text x="329" y="232" text-anchor="middle" class="svg-soft" font-size="12">photogrammetry mesh,</text>
+    <text x="329" y="250" text-anchor="middle" class="svg-soft" font-size="12">NeRF, Gaussian splats</text>
+    <text x="329" y="326" text-anchor="middle" class="svg-soft" font-size="12">interactive, lighting baked in</text>
+
+    <rect x="444" y="50" width="195" height="290" rx="10" class="svg-box"/>
+    <text x="541" y="74" text-anchor="middle" class="svg-fg" font-weight="700">Geometry a model invents</text>
+    <text x="541" y="94" text-anchor="middle" class="svg-soft" font-size="12">neural network → asset</text>
+    <rect x="458" y="108" width="167" height="42" rx="6" class="svg-acc"/><text x="541" y="134" text-anchor="middle" class="svg-fg">7a · Generative meshes</text>
+    <rect x="458" y="158" width="167" height="42" rx="6" class="svg-acc"/><text x="541" y="184" text-anchor="middle" class="svg-fg">7b · World models (3D)</text>
+    <text x="541" y="232" text-anchor="middle" class="svg-soft" font-size="12">Meshy, TRELLIS, Marble…</text>
+    <text x="541" y="326" text-anchor="middle" class="svg-soft" font-size="12">exportable, quality varies</text>
+
+    <rect x="656" y="50" width="184" height="290" rx="10" class="svg-box" stroke-dasharray="5 4"/>
+    <text x="748" y="74" text-anchor="middle" class="svg-fg" font-weight="700">No geometry at all</text>
+    <text x="748" y="94" text-anchor="middle" class="svg-soft" font-size="12">neural network → pixels</text>
+    <rect x="668" y="108" width="160" height="42" rx="6" class="svg-box"/><text x="748" y="134" text-anchor="middle" class="svg-fg">7c · Pixel world models</text>
+    <rect x="668" y="158" width="160" height="42" rx="6" class="svg-box"/><text x="748" y="184" text-anchor="middle" class="svg-fg">7d · AI video</text>
+    <text x="748" y="232" text-anchor="middle" class="svg-soft" font-size="12">Genie 3, Odyssey,</text>
+    <text x="748" y="250" text-anchor="middle" class="svg-soft" font-size="12">Veo, Kling, Runway</text>
+    <text x="748" y="326" text-anchor="middle" class="svg-soft" font-size="12">nothing to export</text>
+  </g>
+</svg>
+<figcaption>Route 8 (hybrids) mixes these, for example an agent-written Three.js scene that streams Google tiles and drops in a generated mesh.</figcaption>
+</figure>
+
+<h2>The routes at a glance</h2>
+<p>All prices, versions and star counts in this table were checked on 2026-10-17. "Agent drivability" is my judgement <span class="tag inference">Inference</span>, based on how much of the route is plain text that an LLM can write and check.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Route</th><th>Typical tools</th><th>Cost to start</th><th>Hardware</th><th>Your skill needed</th><th>Agent drivability</th></tr></thead>
+<tbody>
+<tr><td><b>1 Browser real-time</b></td><td>Three.js r186, React Three Fiber, Babylon.js 9, PlayCanvas, raw WebGL/WebGPU</td><td>$0 (MIT / Apache-2.0)</td><td>Any laptop with a browser</td><td>Low to start, high to polish</td><td><b>Excellent.</b> Text in, text out; checkable with a headless browser.</td></tr>
+<tr><td><b>2 Pure shader art</b></td><td>ShaderToy, one fragment shader, raymarching SDFs</td><td>$0</td><td>Any GPU; cost grows with pixels</td><td>Maths-heavy</td><td>Good for known patterns; weak at new art direction.</td></tr>
+<tr><td><b>3 Game engine via agent</b></td><td>Unreal 5.8 (built-in experimental MCP), Unity 6.6 (Unity CLI MCP), Godot 4.7 (community MCP)</td><td>Free under revenue limits (UE $1M, Unity $200K)</td><td>UE: 32 GB RAM, 8 GB+ VRAM recommended</td><td>Medium to high</td><td>Good and improving; editor state is harder to see than a web page.</td></tr>
+<tr><td><b>4 Offline Blender</b></td><td>Blender 5.2 LTS + Python (<code>bpy</code>), mcp-for-blender, official Blender Lab MCP</td><td>$0 (GPL)</td><td>GPU helps a lot for Cycles</td><td>Medium</td><td>Good: a Python script and a rendered PNG close the loop.</td></tr>
+<tr><td><b>5 Geodata</b></td><td>CesiumJS 1.146, 3DTilesRendererJS, Google Photorealistic 3D Tiles, MapLibre, OSM, Overture</td><td>Free tiers; Google: 1,000 root requests/month free</td><td>Any; bandwidth</td><td>Low</td><td>Excellent for wiring; the "wow" belongs to the data provider.</td></tr>
+<tr><td><b>6 Captured reality</b></td><td>RealityScan, COLMAP, Postshot, Polycam, Scaniverse; viewers Spark, SuperSplat</td><td>Free to low; INRIA reference trainer is non-commercial</td><td>Phone or camera; NVIDIA GPU for training</td><td>Low to medium; you must go out and capture</td><td>Agent can build the viewer; cannot take the photos.</td></tr>
+<tr><td><b>7 Generative 3D and world models</b></td><td>Meshy, Tripo, Rodin, Hunyuan3D, TRELLIS.2; Marble; Genie 3; Veo 3.1</td><td>Free tiers; e.g. Marble API $1.20 per world</td><td>Cloud, or 24 GB VRAM for TRELLIS.2</td><td>Low</td><td>Via REST APIs; output quality is not under the agent's control.</td></tr>
+<tr><td><b>8 Hybrids</b></td><td>Any mix of the above</td><td>Sum of parts</td><td>Sum of parts</td><td>Medium</td><td>Where the strongest demos live.</td></tr>
+</tbody></table></div>
+
+<h2 id="route-1">Route 1 — Browser real-time code</h2>
+<p><b>How it works.</b> The agent writes an HTML page with JavaScript that builds a scene (objects, materials, lights, a camera) and redraws it about 60 times per second on your GPU through WebGL2 or WebGPU. Nothing is pre-rendered: you can move the camera, pause, change parameters. Pages <a href="02-rendering-basics.html">02</a>–<a href="06-controls-collision.html">06</a> explain the moving parts.</p>
+<p><b>Tools</b> (all dated 2026-10-17, from the GitHub and npm APIs) <span class="tag verified">Verified</span>:</p>
+<ul>
+  <li><a href="https://github.com/mrdoob/three.js">Three.js</a>: r186 (npm <code>0.186.1</code>), MIT, ~116.5k stars, ~21.4M npm downloads per week. It is by far the most common choice for agent-written scenes, and the one the AA-3D benchmark requires.</li>
+  <li><a href="https://github.com/pmndrs/react-three-fiber">React Three Fiber</a> 9.8.2 (~33.0k stars) puts Three.js in React; its helper library <a href="https://github.com/pmndrs/drei">drei</a> (~10k stars) has ready-made sky, water, environment and controls.</li>
+  <li><a href="https://github.com/BabylonJS/Babylon.js">Babylon.js</a> 9.31 (Apache-2.0, ~26.2k stars) is a fuller engine with an inspector, physics and splat loading built in.</li>
+  <li><a href="https://github.com/playcanvas/engine">PlayCanvas</a> 2.23 (MIT, ~17.1k stars) is an engine plus a hosted editor (plans from free to $50 per seat per month).</li>
+  <li>Smaller options: A-Frame (VR-oriented HTML tags), OGL, regl, Threlte (Svelte), Needle (Unity-to-web exporter).</li>
+</ul>
+<p><b>Cost and hardware.</b> Free. Any recent laptop runs simple scenes; heavy post-processing and big cities need a discrete GPU to stay smooth.</p>
+<p><b>How well an agent drives it.</b> Best of all routes. Everything is text, the model has seen vast amounts of Three.js code, and the result can be checked automatically: open the page in a headless browser, read console errors, take a screenshot and look at it (<a href="11-agent-workflow.html">page 11</a>). The common catch is <b>API drift</b>. Three.js changes often and models still write code for removed APIs. <span class="tag practice">Practice</span></p>
+<p><b>How to spot it in a demo.</b> The author can orbit and pause freely; geometry stays consistent from every angle; often there is an FPS counter, sliders or a GUI panel; shadows move when the light moves; shapes are often simple boxes and spheres unless glTF models are loaded.</p>
+
+<h2 id="route-2">Route 2 — Pure shader art (raymarching and ShaderToy)</h2>
+<p><b>How it works.</b> There are no meshes. One fragment shader runs once for every pixel and, for each pixel, marches a ray into a scene described by maths (a signed distance function, SDF). Mountains, seas and whole cities can come from a few hundred lines. <a href="04-shaders-sdf.html">Page 04</a> has a live example: a whole city in one shader.</p>
+<p><b>Classics.</b> <a href="https://www.shadertoy.com/view/Ms2SD1">Seascape</a> by Alexander Alekseev (TDM) is a sea from a noise heightfield with 32 march steps. Despite the look it uses neither Gerstner nor FFT waves <span class="tag verified">Verified</span>. Inigo Quilez's <a href="https://www.shadertoy.com/view/4ttSWf">Rainforest</a> and <a href="https://www.shadertoy.com/view/MdX3Rr">Elevated</a> are terrain landmarks. Licence trap: ShaderToy's default licence is CC BY-NC-SA 3.0 (non-commercial, share-alike) unless the author states otherwise <span class="tag verified">Verified</span>.</p>
+<p><b>Agent drivability.</b> Good when the agent reuses well-known building blocks (iq's SDF primitives, fbm noise, soft shadows). Weak at large structured scenes, because everything has to be expressed as one distance function. Cost scales with screen pixels, so full-screen 4K on a laptop can crawl. <span class="tag inference">Inference</span></p>
+<p><b>Spotting cues.</b> Impossible smoothness (blobs that merge), infinite repetition, perfect soft shadows and ambient occlusion, often a full-screen canvas with no UI. Moving the camera far away shows the same pattern repeating.</p>
+
+<h2 id="route-3">Route 3 — Game engines driven by an agent</h2>
+<p><b>How it works.</b> The engine provides the renderer, lighting, physics, foliage and asset store. The agent drives the editor, either by writing scripts run headlessly or live through an MCP server (a standard plug-in protocol that lets an AI client call tools inside another app).</p>
+<ul>
+  <li><b>Unreal Engine 5.8</b> (latest hotfix 5.8.3, 2026-09-22) ships an <span class="tag experimental">Experimental</span> built-in <a href="https://dev.epicgames.com/documentation/unreal-engine/unreal-mcp-in-unreal-editor?lang=en-US">Unreal MCP</a> server at <code>http://127.0.0.1:8000/mcp</code>. Epic's MIT-licensed <a href="https://github.com/EpicGames/unreal-engine-skills-for-claude-code-plugin">Claude Code plugin</a> (550 stars) teaches the agent its toolsets. Epic's <a href="https://www.unrealengine.com/learning/city-sample-gets-a-major-update-with-pcg-and-unreal-mcp-workflows">City Sample update</a> (2026-08-27) rebuilt the Matrix Awakens city inside UE with its Procedural Content Generation framework, "with assistance from the LLM (in this case, we used Claude…)". <span class="tag verified">Verified</span> Licence: free under $1M revenue; then a 5% royalty on game revenue above $1M per product, or $1,850 per seat per year for non-game companies above $1M.</li>
+  <li><b>Unity 6.6</b>: Personal is free under $200K; Pro costs $2,310 per seat per year. Unity's own in-editor MCP server is deprecated in favour of the <a href="https://docs.unity.com/en-us/unity-cli/replace-mcp-server-unity-cli">Unity CLI</a> (<code>unity mcp</code>). Community servers: <a href="https://github.com/CoplayDev/unity-mcp">CoplayDev/unity-mcp</a> (MIT, ~15.0k stars, has a camera screenshot tool) and <a href="https://github.com/IvanMurzak/Unity-MCP">IvanMurzak/Unity-MCP</a> (Apache-2.0, ~4.5k stars).</li>
+  <li><b>Godot 4.7</b> (MIT, ~118.5k stars): fully scriptable headless (<code>godot --headless --script</code>), with community MCP servers <a href="https://github.com/Coding-Solo/godot-mcp">godot-mcp</a> (~6.1k stars) and <a href="https://github.com/hi-godot/godot-ai">godot-ai</a> (~3.0k stars). Note: C# Godot projects cannot be exported to the web.</li>
+</ul>
+<p><b>Hardware.</b> Epic recommends Windows 11, 32 GB RAM and a DX12 GPU with at least 8 GB VRAM. City Sample alone is reported at about 90 GB on disk <span class="tag practice">Practice</span>.</p>
+<p><b>Agent drivability.</b> Good and improving fast, but harder than the browser: editor state is large and hidden, screenshots must be requested explicitly, and builds are slow. The strongest engine demos are agents <b>orchestrating</b> existing systems (PCG graphs, Megascans, Megaplants) rather than modelling geometry. <span class="tag inference">Inference</span></p>
+<p><b>Spotting cues.</b> Film-grade global illumination (Lumen), dense foliage and photoreal assets, the Unreal or Unity editor UI in the recording, a downloadable executable rather than a link, multi-gigabyte projects.</p>
+
+<h2 id="route-4">Route 4 — Offline rendering in Blender</h2>
+<p><b>How it works.</b> The agent writes Python against Blender's <code>bpy</code> API to build geometry, materials and lights, then renders with EEVEE (real-time rasteriser, seconds per frame) or Cycles (path tracer, tens of seconds to minutes per frame). It can run with no UI: <code>blender -b --python build.py</code> <span class="tag verified">Verified</span>. Or the agent drives a live Blender through an MCP server:</p>
+<ul>
+  <li><a href="https://github.com/ahujasid/mcp-for-blender">mcp-for-blender</a> (formerly <code>blender-mcp</code>; MIT, ~31.3k stars), with a <code>look</code> tool for viewport and render screenshots plus Poly Haven, Sketchfab and AI-mesh integrations. Its <code>execute_blender_code</code> tool runs arbitrary Python (tracked as <a href="https://www.tenable.com/cve/CVE-2026-10688">CVE-2026-10688</a>), so use a throwaway project.</li>
+  <li>Blender's own <a href="https://www.blender.org/lab/mcp-server/">Blender Lab MCP server</a> (v1.0.3, needs Blender 5.1+), deliberately small.</li>
+</ul>
+<p><b>Output.</b> Images or video, not an interactive scene, unless you export glTF to a browser (route 8). This is the free route to path-traced quality.</p>
+<p><b>Spotting cues.</b> Physically perfect soft light and caustics, but the camera only moves along a fixed path; frame rate locked at 24 or 30 fps; no interactivity; render noise or denoiser smudges in dark corners.</p>
+
+<h2 id="route-5">Route 5 — Real-world geodata</h2>
+<p><b>How it works.</b> A renderer streams map data of the real world: <a href="https://developers.google.com/maps/documentation/tile/3d-tiles">Google Photorealistic 3D Tiles</a> (a photogrammetry mesh of many cities), OpenStreetMap or Overture building footprints extruded to boxes, terrain and satellite imagery. Renderers: <a href="https://github.com/CesiumGS/cesium">CesiumJS</a> 1.146 (Apache-2.0, ~15.8k stars), <a href="https://github.com/NASA-AMMOS/3DTilesRendererJS">3DTilesRendererJS</a> (Three.js / Babylon / R3F), deck.gl, MapLibre (BSD) or Mapbox GL (proprietary since v2).</p>
+<p><b>Cost and terms</b> <span class="tag verified">Verified</span>:</p>
+<ul>
+  <li>Google 3D Tiles: 1,000 root-tileset requests per month free; one root request covers a session of at least 3 hours. Above that about $6 per 1,000 (secondary source <span class="tag practice">Practice</span>).</li>
+  <li>You must show the Google Maps logo and the data credits. No caching or offline use. Promotional videos are limited to 30 seconds and must be marked "for promotional purposes only".</li>
+  <li>Cesium ion Community is free for non-commercial use; Commercial costs $149/month.</li>
+  <li>OSM and Overture buildings are under the ODbL: attribute "© OpenStreetMap contributors".</li>
+</ul>
+<p><b>Agent drivability.</b> Excellent. Wiring CesiumJS to Google tiles is ~20 lines. But the realism is Google's, not the agent's: a gorgeous "AI-made Manhattan fly-over" usually means the agent wrote a camera path over someone else's mesh. <span class="tag inference">Inference</span></p>
+<p><b>Spotting cues.</b> The Google Maps logo and a credits line at the bottom; melted or drooping buildings, smeared trees, flat cars; tiles sharpening ("popping") as you approach; a smooth zoom from orbit to street level. OSM extrusions look like untextured pastel boxes.</p>
+
+<h2 id="route-6">Route 6 — Captured reality (photogrammetry, NeRF, Gaussian splats)</h2>
+<p><b>How it works.</b> You photograph or film a real place. Software reconstructs it as one of:</p>
+<ul>
+  <li>a textured mesh (photogrammetry: <a href="https://www.realityscan.com/">RealityScan</a>, free under $1M revenue; COLMAP; Meshroom);</li>
+  <li>a neural radiance field (NeRF);</li>
+  <li>most commonly in 2026, a cloud of millions of 3D Gaussians: <a href="https://arxiv.org/abs/2308.04079">3D Gaussian Splatting</a>, Kerbl et al., SIGGRAPH 2023.</li>
+</ul>
+<p>Web viewers such as <a href="https://github.com/sparkjsdev/spark">Spark</a> (MIT, ~3.8k stars, Three.js) and <a href="https://github.com/playcanvas/supersplat">SuperSplat</a> (MIT, ~10.4k stars) display splats at real-time rates.</p>
+<p><b>Licence trap.</b> The <a href="https://github.com/graphdeco-inria/gaussian-splatting">INRIA reference implementation</a> (~24.2k stars) is research and non-commercial only. Commercial work uses other trainers (Postshot Indie, Polycam, Scaniverse and others). <span class="tag verified">Verified</span></p>
+<p><b>Agent drivability.</b> The agent can write a viewer, convert formats and build a tour path. It cannot go outside and take the photos. <b>Lighting is baked in</b>: a time-of-day slider does nothing.</p>
+<p><b>Spotting cues.</b> Uncannily photoreal but soft edges; translucent "floaters" and haze; blurry areas off the original camera path; reflections that look painted on; a loading bar for a 20–400 MB <code>.spz</code> or <code>.sog</code> file.</p>
+
+<h2 id="route-7">Route 7 — Generative 3D, world models and AI video</h2>
+<p>Three very different products share the "generative" label:</p>
+<h3>7a Text or image to mesh</h3>
+<p>Services such as <a href="https://www.meshy.ai/">Meshy</a>, <a href="https://www.tripo3d.ai/">Tripo</a> and <a href="https://hyper3d.ai/">Rodin</a> return a GLB mesh with textures in seconds to minutes. All three have REST APIs. Open models: <a href="https://github.com/microsoft/TRELLIS.2">TRELLIS.2</a> (MIT, ~12.1k stars; needs a 24 GB NVIDIA GPU) and Hunyuan3D 2.1. Hunyuan3D's licence excludes the EU, UK and South Korea. <span class="tag verified">Verified</span> Good for single props and hero objects; not for whole streets. Raw topology is dense and triangulated. Details and prices are on <a href="10-assets.html">page 10</a>.</p>
+<h3>7b World models that output 3D</h3>
+<p><a href="https://docs.worldlabs.ai/">World Labs Marble</a> turns text or images into an explorable world exported as Gaussian splats or a mesh. The API costs 1,500 credits ≈ $1.20 per world. Tencent's HY-World 2.0 does similar with open weights (same territory restrictions). <span class="tag verified">Verified</span></p>
+<h3>7c World models that output pixels only</h3>
+<p><a href="https://deepmind.google/discover/blog/genie-3-a-new-frontier-for-world-models/">Genie 3</a> (Project Genie, Google AI Ultra subscribers), Odyssey, Decart and HY-World 1.5 generate video frames in real time as you press keys. There is no 3D asset to export. Google lists control latency, worlds darkening over time and drift as known issues. <span class="tag verified">Verified</span></p>
+<h3>7d AI video</h3>
+<p>Veo 3.1 makes 4–8 s clips (extendable up to about 148 s); Runway Gen-4.5 makes 2–10 s, Kling 3.0 3–15 s. <span class="tag verified">Verified</span> A "walkthrough" made this way is a film, not a scene.</p>
+<p><b>Spotting cues for 7c and 7d.</b> Cuts every 4–15 seconds; windows and signs that change between shots; text that mutates; no interaction; cinematic motion blur and colour grade instead of a HUD; impossibly smooth camera moves. World models add input latency and scenes that change when you look back.</p>
+
+<h2 id="route-8">Route 8 — Hybrids</h2>
+<p>The most impressive real demos usually combine routes. Typical mixes:</p>
+<ul>
+  <li>Agent-written Three.js scene + Poly Haven HDRI + a few CC0 glTF models (routes 1 + asset library).</li>
+  <li>Three.js + Google 3D Tiles background + agent-written traffic and weather (routes 1 + 5).</li>
+  <li>Unreal PCG graph driven by an agent + Megascans assets (route 3 + store assets).</li>
+  <li>Blender-generated building kit exported as glTF, assembled in the browser (routes 4 + 1).</li>
+  <li>Marble world exported as splats, rendered in Spark with agent-written gameplay (routes 7b + 1).</li>
+</ul>
+
+<h2 id="spotting">Demo-spotting checklist</h2>
+<p>When you watch a clip that claims "AI made this", run through these questions in order:</p>
+<ol>
+  <li><b>Can the viewer move freely?</b> If the clip only follows a fixed path, it could be anything, including video. Ask for a live link.</li>
+  <li><b>Is there a logo or credits line</b> (Google Maps, © OpenStreetMap, Cesium)? Then the city is data, not generated.</li>
+  <li><b>Do edges look soft, with haze near the camera?</b> Probably Gaussian splats.</li>
+  <li><b>Do details change between shots, or are there cuts every few seconds?</b> AI video.</li>
+  <li><b>Do buildings repeat with identical shapes and procedural lit windows?</b> Agent-written procedural city (routes 1 or 2). See <a href="08-city.html">page 08</a>.</li>
+  <li><b>Is there film-grade global illumination with dense foliage and an editor UI?</b> Engine route.</li>
+  <li><b>Is there a public repo with the prompts?</b> If yes, read it. Then go to <a href="12-one-prompt-truth.html">page 12</a> for how to judge it.</li>
+</ol>
+<div class="callout idea"><span class="callout-title">What this means for you</span>For learning and for agent-friendly iteration, route 1 (browser real-time) is the best place to start. It is free and fully inspectable, and it is the route the live demos in this guide use. Routes 5 and 6 buy realism you cannot code; route 3 buys production quality at the cost of hardware and complexity. <span class="tag inference">Inference</span></div>
+</main>
+</body>
+</html>

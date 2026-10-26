@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · Render loop, scene graph and camera — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part II — Fundamentals</div>
+<h1>Render loop, scene graph and camera</h1>
+<p class="lead">Every real-time 3D scene, from a spinning cube to a city fly-over, runs the same three ideas: a loop that redraws the picture many times per second, a tree of objects whose positions are relative to their parents, and a virtual camera that turns 3D points into 2D pixels. If you know these three, you can read any agent-written Three.js file.</p>
+
+<h2>The render loop</h2>
+<p>A 3D page is an animation. About 60 times per second (or 120 on a high-refresh screen) the browser calls your function, you update the world, and you ask the GPU to draw it. In Three.js that is <code>renderer.setAnimationLoop(fn)</code>, a wrapper around the browser's <code>requestAnimationFrame</code>.</p>
+<figure class="figure">
+<svg viewBox="0 0 820 200" role="img" aria-label="The render loop">
+  <g font-size="13">
+    <rect x="20" y="70" width="150" height="60" rx="8" class="svg-box"/><text x="95" y="96" text-anchor="middle" class="svg-fg" font-weight="700">Input</text><text x="95" y="115" text-anchor="middle" class="svg-soft" font-size="12">keys, mouse, sliders</text>
+    <rect x="215" y="70" width="150" height="60" rx="8" class="svg-box"/><text x="290" y="96" text-anchor="middle" class="svg-fg" font-weight="700">Update</text><text x="290" y="115" text-anchor="middle" class="svg-soft" font-size="12">physics, animation (× dt)</text>
+    <rect x="410" y="70" width="150" height="60" rx="8" class="svg-acc"/><text x="485" y="96" text-anchor="middle" class="svg-fg" font-weight="700">Render</text><text x="485" y="115" text-anchor="middle" class="svg-soft" font-size="12">CPU sends draw calls</text>
+    <rect x="605" y="70" width="190" height="60" rx="8" class="svg-box"/><text x="700" y="96" text-anchor="middle" class="svg-fg" font-weight="700">GPU → screen</text><text x="700" y="115" text-anchor="middle" class="svg-soft" font-size="12">vertex → raster → fragment</text>
+    <path d="M170 100 H210 M365 100 H405 M560 100 H600" class="svg-line" stroke-width="2" marker-end="url(#ar)"/>
+    <path d="M700 132 V170 H95 V134" class="svg-acc-line" stroke-width="2" marker-end="url(#ar2)"/>
+    <text x="400" y="190" text-anchor="middle" class="svg-soft" font-size="12">repeat every frame: 16.7 ms budget at 60 fps, 8.3 ms at 120 fps</text>
+    <text x="400" y="40" text-anchor="middle" class="svg-fg" font-size="14" font-weight="700">one frame</text>
+  </g>
+  <defs>
+    <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="svg-soft"/></marker>
+    <marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/></marker>
+  </defs>
+</svg>
+<figcaption>Anything that moves must be scaled by <code>dt</code> (the seconds since the last frame), or it runs twice as fast on a 120 Hz screen.</figcaption>
+</figure>
+<pre><code>const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));   // cap: 3× phones melt
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() =&gt; {
+  const dt = clock.getDelta();          // seconds since last frame
+  boat.position.x += 4 * dt;            // 4 metres per second, at any frame rate
+  renderer.render(scene, camera);
+});</code></pre>
+<p>Two practical points <span class="tag practice">Practice</span>:</p>
+<ul>
+  <li><b>Browsers throttle hidden tabs.</b> A loop that relies on wall-clock time will "jump" when you come back. Clamp <code>dt</code> (for example to 0.1 s).</li>
+  <li><b>Pixel ratio is a hidden cost multiplier.</b> At <code>devicePixelRatio</code> 3, the GPU shades 9× the pixels of a ratio-1 canvas. Most production code caps it at 2. <span class="tag inference">Inference</span> (arithmetic)</li>
+</ul>
+
+<h2>The scene graph</h2>
+<p>A scene is a tree. Every object (<code>Object3D</code>) has a position, rotation and scale <b>relative to its parent</b>. Rotate a parent and all its children move with it. That is how you make a moon orbit a planet that orbits a star without any trigonometry: put the moon inside the planet, the planet inside an invisible "orbit" group, and spin the groups.</p>
+<figure class="figure">
+<svg viewBox="0 0 820 210" role="img" aria-label="Scene graph tree">
+  <g font-size="13">
+    <rect x="345" y="14" width="130" height="34" rx="6" class="svg-acc"/><text x="410" y="36" text-anchor="middle" class="svg-fg" font-weight="700">Scene</text>
+    <rect x="70" y="84" width="140" height="34" rx="6" class="svg-box"/><text x="140" y="106" text-anchor="middle" class="svg-fg">Camera</text>
+    <rect x="240" y="84" width="140" height="34" rx="6" class="svg-box"/><text x="310" y="106" text-anchor="middle" class="svg-fg">DirectionalLight</text>
+    <rect x="410" y="84" width="140" height="34" rx="6" class="svg-box"/><text x="480" y="106" text-anchor="middle" class="svg-fg">Star (Mesh)</text>
+    <rect x="580" y="84" width="170" height="34" rx="6" class="svg-box"/><text x="665" y="106" text-anchor="middle" class="svg-fg">orbit (Group) ↻</text>
+    <rect x="590" y="150" width="150" height="34" rx="6" class="svg-box"/><text x="665" y="172" text-anchor="middle" class="svg-fg">planet (Mesh) ↻</text>
+    <rect x="420" y="150" width="140" height="34" rx="6" class="svg-box"/><text x="490" y="172" text-anchor="middle" class="svg-fg">moon (Mesh)</text>
+    <path d="M410 48 L140 84 M410 48 L310 84 M410 48 L480 84 M410 48 L665 84 M665 118 V150 M590 167 H560" class="svg-line" stroke-width="1.5"/>
+    <text x="20" y="200" class="svg-soft" font-size="12">world matrix of moon = scene × orbit × planet × moon (each a 4×4 matrix: translate · rotate · scale)</text>
+  </g>
+</svg>
+</figure>
+<p>Under the hood each node stores a 4×4 matrix; the GPU receives the product of all matrices from the root down (the <b>world matrix</b>). Agents occasionally confuse local and world coordinates. A typical symptom is an object that is in the right place until its parent moves. The fix is <code>getWorldPosition()</code> or <code>attach()</code> instead of <code>add()</code>. <span class="tag practice">Practice</span></p>
+
+<h2>Camera and projection</h2>
+<p>A perspective camera is defined by four numbers:</p>
+<ul>
+  <li><b>vertical field of view</b> (degrees);</li>
+  <li><b>aspect ratio</b> (canvas width ÷ height);</li>
+  <li><b>near</b> and <b>far</b> clip distances.</li>
+</ul>
+<p>Together they form a truncated pyramid, the <b>frustum</b>. Anything outside it is not drawn. The projection matrix squashes that pyramid into a cube, and the GPU maps the cube to pixels.</p>
+<ul>
+  <li><b>Field of view.</b> 50–75° feels natural for first-person; 20–35° looks like a telephoto drone shot and flattens a city; above 90° looks like a fisheye.</li>
+  <li><b>Near and far</b> set depth precision. The depth buffer has finite precision spread non-linearly between near and far. With <code>near = 0.001</code> and <code>far = 100000</code>, distant surfaces flicker against each other: <b>z-fighting</b>. Raise near as far as you can (0.1–1 m for a walk-through). For planet-scale scenes, use <code>logarithmicDepthBuffer: true</code>. <span class="tag practice">Practice</span></li>
+  <li><b>Orthographic</b> cameras have no perspective: parallel lines stay parallel. Used for isometric cities, maps and shadow cameras.</li>
+  <li><b>Aspect</b> must be updated on resize (<code>camera.aspect = w/h; camera.updateProjectionMatrix()</code>). A stretched, squashed scene is a classic agent bug.</li>
+</ul>
+
+<h2 id="demo-camera">Try it: camera frustum and scene graph</h2>
+<p>The big view is an "overview" camera you can orbit with the mouse. The red box is a second camera, the <b>subject</b>. Its frustum is drawn as lines, and the inset in the bottom-right corner shows what it sees. Shrink <i>far</i> until the coloured boxes disappear from the inset; widen <i>FOV</i> and watch the pyramid open. The planet orbits because it is a child of a rotating group, and the moon follows because it is a child of the planet.</p>
+<div class="demo">
+  <div class="demo-head"><span class="live">LIVE</span> Camera, frustum, parent/child transforms <span class="src">Three.js r186 · assets/js/demos/camera.js</span></div>
+  <div class="demo-stage" id="camStage"><canvas></canvas><div class="hud"></div></div>
+  <div class="demo-controls">
+    <label><div class="row">Field of view <span class="v" id="camFovV"></span></div><input type="range" id="camFov" min="15" max="110" step="1" value="50"></label>
+    <label><div class="row">Near clip <span class="v" id="camNearV"></span></div><input type="range" id="camNear" min="0.1" max="8" step="0.1" value="0.5"></label>
+    <label><div class="row">Far clip <span class="v" id="camFarV"></span></div><input type="range" id="camFar" min="2" max="30" step="1" value="14"></label>
+    <label><div class="row">Orbit speed <span class="v" id="camSpeedV"></span></div><input type="range" id="camSpeed" min="0" max="3" step="0.1" value="0.6"></label>
+    <label>Projection <select id="camProj"><option value="persp">Perspective</option><option value="ortho">Orthographic</option></select></label>
+    <label class="check"><input type="checkbox" id="camHelper" checked> Show frustum lines</label>
+  </div>
+  <p class="demo-note">Drag to orbit the overview, scroll to zoom. The inset uses scissor rendering: the same scene drawn twice per frame into two rectangles of one canvas.</p>
+</div>
+
+<h2>Coordinates, units and handedness</h2>
+<ul>
+  <li>Three.js is <b>right-handed, Y up</b>, and by convention 1 unit = 1 metre. glTF uses the same. Blender is Z up; its glTF exporter converts. Unreal uses centimetres and Z up. Unity is left-handed, Y up. <span class="tag practice">Practice</span></li>
+  <li>Many "the model is huge or tiny" bugs are unit mismatches. Physical lighting, fog distances and camera speeds only look right at the correct scale. A person is ~1.7 m, a storey ~3 m, a city block 80–200 m.</li>
+</ul>
+
+<h2>What the GPU actually does</h2>
+<p>For each draw call the GPU runs a small program per vertex (the <b>vertex shader</b>, which moves points into screen space). It then rasterises triangles into fragments, roughly pixels, and runs a second program per fragment (the <b>fragment shader</b>, which computes the colour). Every material you use, even a built-in one, is ultimately a pair of these programs. Three.js writes them for you, and <a href="04-shaders-sdf.html">page 04</a> shows how to write your own.</p>
+<div class="callout"><span class="callout-title">Reading an agent's Three.js file in 30 seconds</span>
+Look for these, in this order:
+<ul>
+  <li>the <code>renderer</code> (settings, tone mapping);</li>
+  <li>the <code>camera</code> (FOV, near, far);</li>
+  <li>the lights or <code>scene.environment</code>;</li>
+  <li>the meshes (geometry + material);</li>
+  <li>the <code>setAnimationLoop</code> body (what changes over time);</li>
+  <li>the resize handler.</li>
+</ul>
+Almost every file follows this shape.</div>
+
+<h2>Further reading</h2>
+<ul>
+  <li><a href="https://threejs.org/manual/#en/fundamentals">Three.js manual: Fundamentals</a> and <a href="https://threejs.org/manual/#en/scenegraph">Scene graph</a>: official, short, with live examples.</li>
+  <li><a href="https://webglfundamentals.org/">WebGL Fundamentals</a>: what happens below Three.js.</li>
+  <li><a href="https://learnopengl.com/Getting-started/Coordinate-Systems">LearnOpenGL: Coordinate systems</a>: the clearest explanation of model, view and projection matrices.</li>
+  <li><a href="https://threejs-journey.com/">Three.js Journey</a> (paid course by Bruno Simon) is the most-recommended structured course <span class="tag practice">Practice</span>.</li>
+</ul>
+</main>
+<script src="assets/js/demos/camera.js"></script>
+</body>
+</html>

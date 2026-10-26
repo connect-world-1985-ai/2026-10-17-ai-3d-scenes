@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 3D scenes — a field guide</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Field guide · research snapshot 2026-10-17</div>
+<h1>How AI agents make impressive interactive 3D scenes</h1>
+<p class="lead">You keep seeing a fly-over of a huge city, an ocean glittering under a low sun, a first-person walk down a street at night — and the caption says an agent made it "from one short prompt". This guide takes those demos apart: what the agent actually writes, which libraries and engines do the heavy lifting, where every pixel comes from, and how much of the "one prompt" story is true.</p>
+
+<div class="callout good">
+  <span class="callout-title">The short answer (details on every later page)</span>
+  <ul>
+    <li><b>Most impressive browser demos are ordinary code.</b> The agent writes JavaScript and shader code (usually <a href="https://threejs.org/">Three.js</a>), typically in one HTML file. The "realism" comes from well-known rendering techniques the model has seen thousands of times: physically based materials, an environment map, a sky model, tone mapping, fog and bloom. <span class="tag inference">Inference</span></li>
+    <li><b>Some demos are not code at all</b>: Google's photorealistic 3D tiles of a real city, a Gaussian-splat capture, an AI-generated world, or a plain AI video. They can look alike in a clip but are completely different things. <a href="01-taxonomy.html">Page 01</a> shows how to tell them apart.</li>
+    <li><b>"One prompt" usually means one first prompt.</b> Where people publish their prompts and repositories, you find long briefs, many follow-up turns, a screenshot loop, and runs of one to several hours. A fixed-prompt benchmark (AA-3D, 2026-10-12) let agents work up to <b>3 hours or 250 turns</b> per scene. <span class="tag verified">Verified</span> See <a href="12-one-prompt-truth.html">page 12</a>.</li>
+    <li><b>What matters most is the feedback loop</b>: agents that take a screenshot of their own scene early do better. In AA-3D, how early a model first looks at its scene tracked its rank closely (Spearman 0.82). <span class="tag verified">Verified</span> See <a href="11-agent-workflow.html">page 11</a>.</li>
+  </ul>
+</div>
+
+<h2>How to read this guide</h2>
+<p>The pages build on each other, but each one stands alone. If you are short on time, read <a href="01-taxonomy.html">01 (taxonomy)</a>, <a href="12-one-prompt-truth.html">12 (truth behind one-prompt demos)</a> and <a href="15-hands-on.html">15 (hands-on projects)</a>. If you want to understand the pictures themselves, the fundamentals in Part II come with live toys you can poke.</p>
+
+<div class="cards">
+  <a class="card" href="01-taxonomy.html"><h4>Part I — The landscape</h4><p>Eight ways a 3D demo can be produced, what each costs and needs, how well an agent can drive it, and how to recognise it in a video.</p></a>
+  <a class="card" href="02-rendering-basics.html"><h4>Part II — Fundamentals</h4><p>Render loop, scene graph, cameras, PBR materials, light, shaders, signed distance fields, performance, first-person controls. Six live demos.</p></a>
+  <a class="card" href="07-ocean.html"><h4>Part III — Recipes</h4><p>Ocean, procedural city, terrain, atmosphere, day and night, vegetation, crowds and traffic, cinematic cameras. Each with a quality ladder from simple to advanced.</p></a>
+  <a class="card" href="10-assets.html"><h4>Part IV — Assets and agents</h4><p>Where models, textures and map data come from (and their licences), how agents see and fix their own output, and the evidence behind viral demos.</p></a>
+  <a class="card" href="13-practical.html"><h4>Part V — Doing it</h4><p>GPUs, WebGPU, mobile, hosting, recording video, a decision framework with costs, and five starter projects with ready prompts.</p></a>
+  <a class="card" href="glossary.html"><h4>Reference</h4><p>A searchable glossary and the full sources-and-method page with every link used.</p></a>
+</div>
+
+<h2>The live demos in this guide</h2>
+<p>Every demo runs in your browser. Two are written in raw WebGL with no library, so they also work offline. The others load Three.js r186 (npm <code>three@0.186.1</code>) from the unpkg CDN; if that fails you get a clear message instead of a black box.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Demo</th><th>Page</th><th>Shows</th><th>Needs network?</th></tr></thead>
+<tbody>
+<tr><td>Camera and scene graph</td><td><a href="02-rendering-basics.html#demo-camera">02</a></td><td>Parent/child transforms, field of view, near/far clipping, perspective vs orthographic</td><td>Yes (Three.js)</td></tr>
+<tr><td>PBR material and light</td><td><a href="03-materials-light.html#demo-pbr">03</a></td><td>Metalness, roughness, image-based lighting, shadows, six tone-mapping operators</td><td>Yes (Three.js)</td></tr>
+<tr><td>Raymarched city in one shader</td><td><a href="04-shaders-sdf.html#demo-raymarch">04</a></td><td>Signed distance fields, domain repetition, smooth blending, soft shadows, step-count heat map</td><td><b>No</b> (raw WebGL)</td></tr>
+<tr><td>Draw calls vs instancing</td><td><a href="05-performance.html#demo-instancing">05</a></td><td>Up to 30,000 objects as separate meshes or as one <code>InstancedMesh</code></td><td>Yes (Three.js)</td></tr>
+<tr><td>First-person walk</td><td><a href="06-controls-collision.html#demo-walk">06</a></td><td>Pointer lock, WASD, gravity, capsule-vs-octree collision</td><td>Yes (Three.js)</td></tr>
+<tr><td>Wave toy</td><td><a href="07-ocean.html#demo-waves">07</a></td><td>Sum of sines vs Gerstner waves, Fresnel, foam from surface folding</td><td><b>No</b> (raw WebGL)</td></tr>
+<tr><td>Ocean with the Three.js add-ons</td><td><a href="07-ocean.html#demo-ocean3">07</a></td><td>Planar reflection, scrolling normal maps, analytic sky, sky-based lighting</td><td>Yes (Three.js)</td></tr>
+<tr><td>Procedural city</td><td><a href="08-city.html#demo-city">08</a></td><td>Street grid, instanced buildings, shader-drawn windows, day/night, traffic, fly-over path, bloom</td><td>Yes (Three.js)</td></tr>
+</tbody></table></div>
+
+<h2>About this research</h2>
+<p>This is an independent, vendor-neutral snapshot dated <b>2026-10-17</b>. Six research passes gathered sourced fact sheets; the most important claims were re-checked directly (GitHub API star counts and licences, the AA-3D benchmark article, the night-street repository, Epic's City Sample post, Google's Map Tiles policies). Every claim carries an evidence tag:</p>
+<ul>
+  <li><span class="tag verified">Verified</span> read in a primary source (docs, repository, paper, licence file, pricing page) on 2026-10-17;</li>
+  <li><span class="tag practice">Practice</span> common engineering practice or a credible secondary source;</li>
+  <li><span class="tag inference">Inference</span> my reasoning from verified facts;</li>
+  <li><span class="tag unverified">Unverified</span> a lead I could not confirm;</li>
+  <li><span class="tag experimental">Experimental</span> something the vendor itself labels experimental or beta.</li>
+</ul>
+<p>Prices, star counts and model rankings age quickly. Method, sources and known gaps are on <a href="sources.html">Sources and method</a>.</p>
+</main>
+</body>
+</html>

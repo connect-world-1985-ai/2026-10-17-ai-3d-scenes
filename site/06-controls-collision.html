@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · First-person controls and collision — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part II — Fundamentals</div>
+<h1>First-person controls and collision</h1>
+<p class="lead">"Walk through the streets" sounds simple, yet it is where agent-made scenes most often break: walking through walls, floating above stairs, getting stuck on a kerb, a mouse that spins wildly. Free walking needs three things: mouse-look, movement relative to where you are looking, and collision against the world. This page shows the standard browser recipe, the same one the official Three.js FPS example uses.</p>
+
+<h2>Camera control styles</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Control</th><th>Three.js add-on</th><th>Good for</th><th>Collision?</th></tr></thead>
+<tbody>
+<tr><td>Orbit</td><td><code>OrbitControls</code></td><td>Inspecting an object, overview of a city</td><td>No; you can clip through anything</td></tr>
+<tr><td>Map / pan</td><td><code>MapControls</code></td><td>Top-down city or terrain browsing</td><td>No</td></tr>
+<tr><td>Fly</td><td><code>FlyControls</code>, <code>FirstPersonControls</code></td><td>Free flight; used by the official WebGPU city generator example</td><td>No</td></tr>
+<tr><td>First-person walk</td><td><code>PointerLockControls</code> + your own movement</td><td>Street walks, interiors</td><td>You add it (below)</td></tr>
+<tr><td>Scripted path</td><td><code>CatmullRomCurve3</code> + <code>getPointAt(t)</code></td><td>Cinematic fly-overs, video capture</td><td>Not needed: you design the path</td></tr>
+</tbody></table></div>
+<p>Most "AI fly-over" clips use the last row: a spline path, not free control. It is much easier to make look good. See <a href="09-world-recipes.html#camera-paths">cinematic paths vs free walking</a>.</p>
+
+<h2>Mouse-look with pointer lock</h2>
+<p>The <a href="https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API">Pointer Lock API</a> hides the cursor and delivers raw mouse movement (<code>movementX</code>, <code>movementY</code>), so you can turn without the cursor hitting the screen edge. It must be started by a user click, and <kbd>Esc</kbd> releases it. <span class="tag verified">Verified</span></p>
+<ul>
+  <li>Use rotation order <code>'YXZ'</code>: yaw (turn) around world Y, then pitch (look up and down). Clamp pitch to about ±85°, or the view flips over the top.</li>
+  <li>Movement is relative to the camera's forward direction <b>flattened to the ground</b> (set y to 0 and renormalise). Otherwise looking down makes you walk into the floor.</li>
+  <li>Touch screens have no pointer lock: provide drag-to-look and on-screen buttons. The demo below does both.</li>
+</ul>
+
+<h2>Collision: capsule against octree</h2>
+<p>The player is not a point; it is a <b>capsule</b> (a cylinder with round ends, about 0.35 m radius and 1.7 m tall). Round ends slide smoothly over kerbs and stairs instead of snagging on edges. The world's triangles go into an <b>octree</b>, a spatial index that splits space into nested cubes, so each frame only tests the few triangles near the player.</p>
+<figure class="figure">
+<svg viewBox="0 0 820 220" role="img" aria-label="Capsule collision against a wall and a step">
+  <g font-size="12">
+    <rect x="40" y="170" width="740" height="18" class="svg-box"/>
+    <rect x="470" y="150" width="310" height="20" class="svg-box"/>
+    <rect x="640" y="40" width="40" height="110" class="svg-box"/>
+    <rect x="180" y="60" width="48" height="110" rx="24" class="svg-acc"/>
+    <path d="M204 115 H300" class="svg-acc-line" stroke-width="2"/><text x="250" y="108" text-anchor="middle" class="svg-soft">velocity × dt</text>
+    <rect x="420" y="40" width="48" height="110" rx="24" fill="none" class="svg-acc-line" stroke-dasharray="5 4"/>
+    <text x="444" y="30" text-anchor="middle" class="svg-soft">round bottom rides up a 0.18 m kerb</text>
+    <rect x="593" y="40" width="48" height="110" rx="24" fill="none" class="svg-acc-line" stroke-dasharray="5 4"/>
+    <path d="M616 95 H580" stroke="#e11d48" stroke-width="2"/><text x="560" y="88" text-anchor="end" fill="#e11d48">push out along normal × depth</text>
+    <text x="204" y="205" text-anchor="middle" class="svg-soft">capsule = segment + radius</text>
+    <text x="660" y="205" text-anchor="middle" class="svg-soft">wall</text>
+  </g>
+</svg>
+<figcaption>Each frame: move the capsule by velocity, ask the octree for the deepest penetration, push the capsule out along the contact normal, and remove the velocity component going into the wall. A normal pointing up means you are standing on the ground.</figcaption>
+</figure>
+<pre><code>// the core of the step, as in the official games_fps example
+collider.translate(velocity.clone().multiplyScalar(dt));
+const hit = worldOctree.capsuleIntersect(collider);
+onFloor = false;
+if (hit) {
+  onFloor = hit.normal.y &gt; 0;
+  if (!onFloor) velocity.addScaledVector(hit.normal, -hit.normal.dot(velocity)); // slide along walls
+  collider.translate(hit.normal.multiplyScalar(hit.depth));                     // push out
+}
+camera.position.copy(collider.end);   // eyes at the top of the capsule</code></pre>
+<p><b>Sub-steps</b> matter: at low frame rates one big step can carry the capsule straight through a thin wall ("tunnelling"). Running the physics 5 times per frame with <code>dt/5</code> fixes it cheaply. <span class="tag practice">Practice</span> (the official example does the same)</p>
+
+<h2 id="demo-walk">Try it: walk a street block</h2>
+<p>Click the button to lock the pointer. Use <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move, the mouse to look, <kbd>Space</kbd> to jump and <kbd>Esc</kbd> to release. Climb the stairs in the plaza and walk up the ramp. Then untick <i>collision</i> and walk through a building. Tick <i>show octree</i> to see the spatial index.</p>
+<div class="demo">
+  <div class="demo-head"><span class="live">LIVE</span> First-person walk with capsule collision <span class="src">Three.js r186 · Octree + Capsule add-ons · assets/js/demos/walk.js</span></div>
+  <div class="demo-stage" id="walkStage"><canvas></canvas><div class="hud"></div></div>
+  <div class="demo-controls">
+    <label class="check"><input type="checkbox" id="walkCollide" checked> Collision and gravity</label>
+    <label class="check"><input type="checkbox" id="walkOctree"> Show octree</label>
+    <div class="row" style="gap:8px"><button type="button" id="walkFwd">▲ Forward</button><button type="button" id="walkBack">▼ Back</button><button type="button" id="walkJump">Jump</button></div>
+  </div>
+  <p class="demo-note">Touch or no mouse: drag on the scene to look and hold the buttons to move. Every box in this world is collidable; the octree is built once from the whole scene with <code>Octree.fromGraphNode()</code>.</p>
+</div>
+
+<h2>What feels "right" in a street walk</h2>
+<ul>
+  <li><b>Scale.</b> Eye height ~1.6–1.7 m, walking speed ~1.4 m/s, running ~3–5 m/s. Many demos move at 10 m/s, which makes streets feel like toys. The night-street project walks at 1.4 m/s and sprints at 3.1 m/s, with head-bob tied to stride. <span class="tag verified">Verified</span> (repo README)</li>
+  <li><b>Field of view</b> 60–75°; wider exaggerates speed.</li>
+  <li><b>Acceleration and damping</b> rather than instant start and stop.</li>
+  <li><b>Step height.</b> Capsules climb small steps naturally; very high steps need ramps or an explicit step-up.</li>
+  <li><b>Collision proxies.</b> For big cities, collide against simple invisible boxes instead of every detailed triangle.</li>
+</ul>
+
+<h2>Physics engines, when you need more</h2>
+<p>For cars, ragdolls, stacking boxes or many dynamic objects, use a real physics engine compiled to WebAssembly: <a href="https://rapier.rs/">Rapier</a> (it also has a character controller), Jolt (<code>jolt-physics</code>), or cannon-es. The AA-3D benchmark sandbox ships Rapier for exactly this reason. <span class="tag verified">Verified</span> For walking through a static city, the octree approach above is enough.</p>
+
+<h2>Common agent failures</h2>
+<ul>
+  <li>Moving the camera directly with no collider, so you walk through walls. <i>Fix: ask for capsule-vs-octree collision explicitly.</i></li>
+  <li>Building the octree before the meshes are positioned, or from a scene that includes the skybox, so you stand on the sky dome.</li>
+  <li>Calling <code>requestPointerLock()</code> outside a click handler: the browser refuses.</li>
+  <li>Forgetting <code>preventDefault</code> on <kbd>Space</kbd> and arrow keys, so the page scrolls while you walk.</li>
+  <li>Headless tests cannot lock the pointer. A good agent adds a keyboard or scripted-path mode so it can test movement itself (see <a href="11-agent-workflow.html">page 11</a>).</li>
+</ul>
+
+<h2>Further reading</h2>
+<ul>
+  <li>Official examples: <a href="https://threejs.org/examples/games_fps.html">games_fps</a> (capsule + octree) and <a href="https://threejs.org/examples/misc_controls_pointerlock.html">misc_controls_pointerlock</a>.</li>
+  <li><a href="https://rapier.rs/docs/user_guides/javascript/character_controller">Rapier character controller guide</a>.</li>
+</ul>
+</main>
+<script src="assets/js/demos/walk.js"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossary — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Reference</div>
+<h1>Glossary</h1>
+<p class="lead">Short, practical definitions of the terms used in this guide, with a link to the page where each matters most. Type to filter.</p>
+<input id="glossSearch" class="gloss-search" type="search" placeholder="Filter terms… (e.g. bloom, MCP, splat)" aria-label="Filter glossary">
+
+<h2>Rendering</h2>
+<dl class="gloss">
+<dt>ACES / AgX (tone mapping)</dt><dd>Curves that compress HDR light values into displayable colours. AgX desaturates bright colours more naturally. See <a href="03-materials-light.html#demo-pbr">page 03</a>.</dd>
+<dt>Aliasing / antialiasing (MSAA, FXAA, TAA)</dt><dd>Jagged edges and shimmer, and the techniques against them. MSAA is hardware multisampling; FXAA is a cheap blur-like filter; TAA blends frames.</dd>
+<dt>ANGLE</dt><dd>The layer in Chromium that translates WebGL into Direct3D, Metal or Vulkan. Its shader translation is why first frames can take seconds.</dd>
+<dt>Bloom</dt><dd>A glow around bright pixels, added in post-processing. Too much washes the image out. See <a href="08-city.html">page 08</a>.</dd>
+<dt>Camera frustum, near and far</dt><dd>The visible pyramid between the near and far planes. Objects outside it are not drawn; a bad near/far ratio causes z-fighting. See <a href="02-rendering-basics.html#demo-camera">page 02</a>.</dd>
+<dt>Cascaded shadow maps</dt><dd>Several shadow maps at different distances, so near shadows stay sharp over a large scene.</dd>
+<dt>Draw call</dt><dd>One request from the CPU to the GPU to draw something. Usually the first performance limit in the browser. See <a href="05-performance.html">page 05</a>.</dd>
+<dt>Emissive</dt><dd>A material channel for surfaces that give off light (windows, lamps). It does not light other objects unless you add lights or bloom.</dd>
+<dt>Environment map (IBL, PMREM)</dt><dd>An image of the surroundings used to light and reflect PBR materials. PMREM is Three.js's pre-filtered version for rough surfaces.</dd>
+<dt>Exposure</dt><dd>An overall brightness multiplier applied before tone mapping.</dd>
+<dt>Fog (linear, exponential)</dt><dd>Blends distant objects into a colour. It hides the far plane and the edge of the world; it should match the sky colour.</dd>
+<dt>Fragment shader</dt><dd>A GPU program run once per pixel that computes its colour. See <a href="04-shaders-sdf.html">page 04</a>.</dd>
+<dt>Fresnel</dt><dd>Surfaces reflect more at grazing angles. It is why the sea is a mirror near the horizon. See <a href="07-ocean.html">page 07</a>.</dd>
+<dt>Global illumination (GI)</dt><dd>Light bouncing between surfaces. Real-time engines approximate it (Lumen in Unreal); path tracers compute it.</dd>
+<dt>HDR / HDRI</dt><dd>High-dynamic-range light values or images. An HDRI is a panoramic photo used as sky and lighting.</dd>
+<dt>LOD (level of detail)</dt><dd>Using simpler versions of objects when they are far away.</dd>
+<dt>Path tracing</dt><dd>Rendering by simulating many light paths per pixel: physically accurate, slow (Blender Cycles).</dd>
+<dt>PBR (physically based rendering)</dt><dd>Materials described by base colour, metalness and roughness that respond plausibly to any light. See <a href="03-materials-light.html">page 03</a>.</dd>
+<dt>Post-processing</dt><dd>Effects applied to the finished image: bloom, colour grading, SSAO, depth of field.</dd>
+<dt>Raymarching / sphere tracing</dt><dd>Drawing a scene by stepping along rays through a signed distance field; the ShaderToy technique. See <a href="04-shaders-sdf.html#demo-raymarch">page 04</a>.</dd>
+<dt>SDF (signed distance field)</dt><dd>A function giving the distance from any point to the nearest surface.</dd>
+<dt>Shadow acne / peter-panning</dt><dd>Stripe artefacts or floating shadows caused by the shadow bias being set too low or too high.</dd>
+<dt>SSAO</dt><dd>Screen-space ambient occlusion: darkens creases and contact points cheaply.</dd>
+<dt>Vertex shader</dt><dd>A GPU program run once per vertex. It moves vertices, for example ocean waves.</dd>
+<dt>Z-fighting</dt><dd>Flicker where two surfaces sit at almost the same depth.</dd>
+</dl>
+
+<h2>Scenes and techniques</h2>
+<dl class="gloss">
+<dt>FFT ocean (Tessendorf)</dt><dd>An ocean built from a wave spectrum with a Fast Fourier Transform. Film-quality; usually needs compute shaders (WebGPU).</dd>
+<dt>Gerstner wave</dt><dd>A wave that moves points in circles, giving sharp crests and flat troughs. Sum several of them for an ocean. See <a href="07-ocean.html#demo-waves">page 07</a>.</dd>
+<dt>Instancing (InstancedMesh, BatchedMesh)</dt><dd>Drawing many copies of a mesh (InstancedMesh) or many different meshes (BatchedMesh) in one draw call. See <a href="05-performance.html#demo-instancing">page 05</a>.</dd>
+<dt>Kit-bashing</dt><dd>Building scenes from a set of reusable modular pieces.</dd>
+<dt>Octree collision</dt><dd>A spatial tree that makes "does the player capsule hit the world?" fast. See <a href="06-controls-collision.html#demo-walk">page 06</a>.</dd>
+<dt>PCG (procedural content generation)</dt><dd>Generating content by rules and noise. In Unreal, PCG is also the name of its graph framework.</dd>
+<dt>Pointer lock</dt><dd>A browser API that hides the cursor for mouse-look. It needs a real user click, so agents cannot test it directly.</dd>
+<dt>Seeded noise (Perlin, simplex, value)</dt><dd>Smooth pseudo-random functions. The same seed gives the same city every time.</dd>
+<dt>Spline camera path (Catmull-Rom)</dt><dd>A smooth curve through control points that a camera follows for a fly-over. See <a href="09-world-recipes.html#camera-paths">page 09</a>.</dd>
+</dl>
+
+<h2>Web platform</h2>
+<dl class="gloss">
+<dt>CDN and import map</dt><dd>A CDN hosts library files; an import map tells the browser where <code>import 'three'</code> comes from. Pin exact versions.</dd>
+<dt>COOP / COEP / cross-origin isolation</dt><dd>HTTP headers needed for SharedArrayBuffer (Wasm threads). Plain Three.js does not need them. See <a href="13-practical.html#hosting">page 13</a>.</dd>
+<dt>ES module</dt><dd>JavaScript loaded with <code>import</code>. Local module files do not load from <code>file://</code>, which is why this site uses classic scripts.</dd>
+<dt>glTF / GLB</dt><dd>The standard runtime 3D format (ISO/IEC 12113). GLB is the single-file binary form.</dd>
+<dt>KTX2 / Basis Universal</dt><dd>GPU-compressed texture formats that use much less memory than PNG or JPEG.</dd>
+<dt>MediaRecorder / WebCodecs</dt><dd>Browser APIs for recording video in real time, and for encoding frames yourself. See <a href="13-practical.html#video">page 13</a>.</dd>
+<dt>SwiftShader / WARP</dt><dd>Software GPUs used when no real GPU is available (for example headless CI). They are slow, so their FPS numbers mean little.</dd>
+<dt>TSL (Three Shading Language)</dt><dd>Three.js's node-based shader language for <code>WebGPURenderer</code>; it compiles to WGSL or GLSL.</dd>
+<dt>WebGL2</dt><dd>The mature browser GPU API (OpenGL ES 3.0), about 97% global support.</dd>
+<dt>WebGPU / WGSL</dt><dd>The newer browser GPU API, with compute shaders; WGSL is its shader language. About 88% support by caniuse's count. See <a href="13-practical.html#webgpu">page 13</a>.</dd>
+</dl>
+
+<h2>Assets, capture and generation</h2>
+<dl class="gloss">
+<dt>CC0</dt><dd>A public-domain dedication: use for anything, no credit required. The safest licence for demos. See <a href="10-assets.html">page 10</a>.</dd>
+<dt>CC-BY / CC-BY-NC</dt><dd>Credit required / additionally non-commercial only. A common trap with Sketchfab downloads.</dd>
+<dt>Gaussian splatting (3DGS)</dt><dd>A scene captured from photos as millions of coloured, blurred ellipsoids. Photoreal and fast to render, but hard to edit or light.</dd>
+<dt>NeRF</dt><dd>Neural radiance field: a learned volumetric scene from photos. Largely replaced by splats for real-time use.</dd>
+<dt>Photogrammetry</dt><dd>Reconstructing a textured mesh from many photos.</dd>
+<dt>3D Tiles</dt><dd>An OGC standard for streaming huge 3D datasets (cities, terrain) by level of detail; used by Google Photorealistic 3D Tiles and Cesium.</dd>
+<dt>Image-to-3D / text-to-3D</dt><dd>AI services (Meshy, Tripo, Rodin, Hunyuan3D, TRELLIS) that generate a mesh from an image or text. Good for props, weak for whole scenes.</dd>
+<dt>World model</dt><dd>An AI model that generates explorable 3D or video worlds (for example World Labs Marble). See <a href="01-taxonomy.html#route-7">route 7</a>.</dd>
+</dl>
+
+<h2>Agents</h2>
+<dl class="gloss">
+<dt>Agent / harness</dt><dd>A model running in a loop with tools (files, shell, browser). The harness is the program around it (Claude Code, Codex, Cursor, Stirrup).</dd>
+<dt>Brief</dt><dd>The written specification given to an agent. Good briefs contain numbers, references, banned outcomes and a definition of done.</dd>
+<dt>Critic subagent</dt><dd>A second agent that judges screenshots without seeing the code (night-street's "blind critic").</dd>
+<dt>Elo / Bradley–Terry</dt><dd>Ratings computed from pairwise votes; used by AA-3D and the arenas. Overlapping confidence intervals mean "tied".</dd>
+<dt>MCP (Model Context Protocol)</dt><dd>A standard for connecting agents to tools: browsers, Blender, Unreal, Unity, Godot. See <a href="11-agent-workflow.html#mcp">page 11</a>.</dd>
+<dt>Playwright</dt><dd>A browser automation library; agents use it, directly or through an MCP server, to screenshot and test pages.</dd>
+<dt>Rules file / skill</dt><dd>Persistent instructions for an agent (<code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>.cursor/rules</code>, <code>SKILL.md</code>). See <a href="15-hands-on.html#rules">page 15</a>.</dd>
+<dt>Vibe coding</dt><dd>Building software mostly by prompting, with little reading of the code.</dd>
+</dl>
+</main>
+</body>
+</html>

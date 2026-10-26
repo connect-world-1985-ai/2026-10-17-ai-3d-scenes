@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11 · How the agent works: knowledge, iteration, eyes, failures — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part IV — Assets and agents</div>
+<h1>How the agent works: knowledge, iteration, and eyes</h1>
+<p class="lead">A language model writing 3D code is working blind unless someone shows it the result. The best evidence available in October 2026 points one way: the agents that produce the best scenes are the ones that <b>look at their own output early and often</b>. This page covers what the model knows already, how it sees, what typically breaks, and which tools and MCP servers give it eyes and hands.</p>
+
+<h2>One-shot knowledge vs iteration</h2>
+<p>A model "knows" Three.js the way you know a language you read a lot: it has seen thousands of examples, including the official ocean, FPS and bloom examples, ShaderToy classics and tutorials. So a first attempt usually contains the right building blocks. But:</p>
+<ul>
+  <li><b>It cannot predict pixels.</b> Whether fog matches the sky, whether a shader is too bright, whether the camera clips a tower: none of that is visible from code.</li>
+  <li><b>Its knowledge is mixed across versions.</b> Three.js removed or renamed many APIs between r125 and r186; the model blends them (failure table below).</li>
+  <li><b>Taste needs a reference.</b> "Make it look like a photo taken at 11 PM on a phone" works much better when the agent can compare its render against that target.</li>
+</ul>
+<p>The <a href="https://artificialanalysis.ai/articles/aa-3d">AA-3D benchmark</a> (Artificial Analysis, 2026-10-12) measured this directly. Each model ran as an agent in an offline sandbox with Blender, Rapier physics, Python, a headless browser and a CC0 asset library, for up to 3 hours or 250 turns per scene, across 55 tasks. <span class="tag verified">Verified</span></p>
+<ul>
+  <li>The top five models first looked at an image of their own scene after a median of <b>10–13 turns</b>; models ranked 14th–20th waited until turn 15–40.</li>
+  <li>Across the 19 image-capable models, <b>looking early tracked rank closely (Spearman 0.82)</b>. "How often a model looks matters less than when."</li>
+  <li>Agents spent <b>82% of their tool time testing the page in a browser</b> (screenshots and error checks); writing code was 6% of tool time.</li>
+  <li>Two text-only models (GLM-5.3, Nemotron 3 Ultra) built every scene without ever seeing it. GLM-5.3 fell furthest below the score its general intelligence predicts; its sibling GLM-5.3-Flash, which can view images, scored 149 Elo higher.</li>
+  <li>Output tokens and turn counts did <b>not</b> predict quality. The number of interactive UI controls did (Pearson 0.90).</li>
+</ul>
+<p>These are correlations from one benchmark, not proof of cause. <span class="tag inference">Inference</span></p>
+
+<h2>The iteration loop</h2>
+<figure class="figure">
+<svg viewBox="0 0 820 248" role="img" aria-label="The agent's render-look-fix loop">
+  <g font-size="13">
+    <rect x="30" y="85" width="140" height="60" rx="8" class="svg-box"/><text x="100" y="111" text-anchor="middle" class="svg-fg" font-weight="700">Write / edit</text><text x="100" y="130" text-anchor="middle" class="svg-soft" font-size="12">index.html, shaders</text>
+    <rect x="230" y="85" width="140" height="60" rx="8" class="svg-acc"/><text x="300" y="111" text-anchor="middle" class="svg-fg" font-weight="700">Run headless</text><text x="300" y="130" text-anchor="middle" class="svg-soft" font-size="12">Playwright / CDP</text>
+    <rect x="430" y="20" width="160" height="56" rx="8" class="svg-box"/><text x="510" y="44" text-anchor="middle" class="svg-fg" font-weight="700">Console + errors</text><text x="510" y="62" text-anchor="middle" class="svg-soft" font-size="12">text: cheap, exact</text>
+    <rect x="430" y="88" width="160" height="56" rx="8" class="svg-box"/><text x="510" y="112" text-anchor="middle" class="svg-fg" font-weight="700">Screenshots</text><text x="510" y="130" text-anchor="middle" class="svg-soft" font-size="12">fixed camera poses</text>
+    <rect x="430" y="156" width="160" height="56" rx="8" class="svg-box"/><text x="510" y="180" text-anchor="middle" class="svg-fg" font-weight="700">Metrics</text><text x="510" y="198" text-anchor="middle" class="svg-soft" font-size="12">FPS, draw calls, ms</text>
+    <rect x="650" y="85" width="150" height="60" rx="8" class="svg-acc"/><text x="725" y="111" text-anchor="middle" class="svg-fg" font-weight="700">Judge</text><text x="725" y="130" text-anchor="middle" class="svg-soft" font-size="12">vision review vs brief</text>
+    <path d="M170 115 H226 M370 115 L426 48 M370 115 H426 M370 115 L426 184 M590 48 L646 112 M590 116 H646 M590 184 L646 118" class="svg-line" stroke-width="1.6"/>
+    <path d="M725 145 V222 H100 V149" class="svg-acc-line" stroke-width="2"/>
+    <text x="410" y="240" text-anchor="middle" class="svg-soft" font-size="12">repeat until the brief's checks pass: AA-3D allowed up to 250 turns</text>
+  </g>
+</svg>
+</figure>
+<ol>
+  <li><b>Console first.</b> Errors are text: cheap and exact. One example from the night-street project: its whole audio system was silent "from the day it was written" because a <code>ConvolverNode</code> threw, and "the error was in the page console the whole time". <span class="tag verified">Verified</span></li>
+  <li><b>Screenshots from fixed poses.</b> Good projects add URL parameters so a script can reproduce a shot. The LAAS world demo uses <code>?cam=</code>, <code>?shot=</code>, <code>?freeze=1</code> and <code>?T=hours</code>, plus a scripted 90-second flythrough. <span class="tag verified">Verified</span></li>
+  <li><b>Metrics in the picture.</b> An on-screen HUD with FPS and draw calls means every screenshot carries performance data (all demos in this guide do this).</li>
+  <li><b>Vision review</b> against the brief. night-street used a separate "blind critic" subagent that saw <i>only</i> renders and judged them against real photography. <span class="tag verified">Verified</span></li>
+</ol>
+<p>That is exactly how this guide's demos were checked: a <a href="sources.html#method">Playwright script</a> opened each page from <code>file://</code> in headless Edge, collected console errors, screenshotted each demo and printed its HUD. That loop caught a city demo washed out to white by bloom, a camera clipping into towers, and a HUD that under-counted draw calls. None of those were visible in the code. <span class="tag verified">Verified</span> (this project)</p>
+
+<h2>How it sees: tools</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Tool</th><th>What it gives the agent</th><th>Notes (2026-10-17)</th></tr></thead>
+<tbody>
+<tr><td><a href="https://github.com/microsoft/playwright-mcp">Playwright MCP</a></td><td>Browse, click, <code>browser_take_screenshot</code>, <code>browser_console_messages</code>, <code>browser_evaluate</code></td><td>Apache-2.0, 38,276 stars; the README notes coding agents may prefer the Playwright CLI plus skills because CLI calls use fewer tokens <span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://github.com/ChromeDevTools/chrome-devtools-mcp">Chrome DevTools MCP</a></td><td>Screenshots, console with source-mapped stacks, performance traces, network</td><td>Apache-2.0, 53,708 stars; <b>usage statistics on by default</b> (<code>--no-usage-statistics</code>) <span class="tag verified">Verified</span></td></tr>
+<tr><td>Plain Playwright or Puppeteer scripts</td><td>Same, scripted; cheapest per call</td><td>What this guide used (<code>playwright-core</code> driving installed Edge)</td></tr>
+<tr><td><a href="https://github.com/anthropics/skills">anthropics/skills</a> <code>webapp-testing</code></td><td>A skill that teaches the agent to test local pages with Playwright</td><td>The official skills repo has no Three.js- or Blender-specific skill <span class="tag verified">Verified</span></td></tr>
+<tr><td>Computer use (screen + mouse)</td><td>Sees the whole desktop</td><td>Overkill for a web page; useful for desktop apps without APIs <span class="tag inference">Inference</span></td></tr>
+<tr><td>Engine MCP screenshot tools</td><td>Unreal viewport capture; Unity <code>camera screenshot</code> (CoplayDev); Blender <code>look</code> (mcp-for-blender)</td><td>See the MCP table below</td></tr>
+</tbody></table></div>
+
+<h3>The headless GPU problem</h3>
+<p>Headless browsers often have no GPU, so WebGL needs a software renderer:</p>
+<ul>
+  <li>Chromium's automatic SwiftShader fallback is <b>deprecated</b>. To opt in for testing, pass <code>--enable-unsafe-swiftshader</code>; on Windows the replacement fallback is WARP (D3D11). <span class="tag verified">Verified</span> (<a href="https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md">Chromium docs</a>, blink-dev)</li>
+  <li>Software-rendered FPS numbers say nothing about real performance. A benchmark that reports 2–28 fps from headless Chrome is measuring a CPU rasteriser. AA-3D instead reports GPU time per frame on a test machine. <span class="tag inference">Inference</span></li>
+  <li>Headless <b>WebGPU</b> is harder: it needs full Chromium (not the headless shell), Vulkan flags or a real GPU, and a secure context (<code>http://localhost</code>, not <code>file://</code> or <code>about:blank</code>). <span class="tag practice">Practice</span></li>
+  <li>Log the unmasked renderer (<code>WEBGL_debug_renderer_info</code>) so the agent knows which GPU it measured on.</li>
+</ul>
+
+<h2 id="failures">Typical failures and fixes</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Failure</th><th>Cause</th><th>Symptom</th><th>Fix to put in the prompt</th></tr></thead>
+<tbody>
+<tr><td><code>THREE.Geometry</code></td><td>Removed from core in r125</td><td><code>TypeError: … is not a constructor</code></td><td>"Use BufferGeometry only"</td></tr>
+<tr><td><code>outputEncoding</code>, <code>sRGBEncoding</code></td><td>Replaced by <code>outputColorSpace</code> and <code>SRGBColorSpace</code> in r152</td><td>Silently wrong colours</td><td>"Use colorSpace APIs (r152+)"</td></tr>
+<tr><td><code>physicallyCorrectLights</code>, old intensities</td><td>Legacy lighting deprecated in r155</td><td>Too dark or too bright</td><td>"Physical light units; tune with screenshots"</td></tr>
+<tr><td><code>&lt;script src="three.min.js"&gt;</code></td><td>Global (UMD) builds removed in r161</td><td>Black screen; <code>THREE is not defined</code></td><td>"ES modules with an import map; pin three@0.186.1"</td></tr>
+<tr><td><code>three</code> and add-ons from different versions</td><td>Two copies of Three.js loaded</td><td>"Multiple instances of Three.js" warning; nothing renders</td><td>"Same version for <code>three</code> and <code>three/addons/</code>"</td></tr>
+<tr><td>Removed constants (e.g. <code>PCFSoftShadowMap</code> in r186)</td><td>Training data older than the release</td><td>Console warning, different shadows</td><td>"Check the migration guide for r186"</td></tr>
+<tr><td>Black PBR meshes</td><td>No light and no environment</td><td>Black silhouettes</td><td>"Always set scene.environment"</td></tr>
+<tr><td>Blank screen</td><td>Camera inside an object, wrong near/far, constructor arguments in the wrong order</td><td>Background colour only</td><td>Screenshot early; log camera position</td></tr>
+<tr><td>Low FPS on a small scene</td><td>One mesh per object</td><td>Hundreds or thousands of draw calls</td><td><code>InstancedMesh</code>; HUD with draw calls</td></tr>
+<tr><td>Missing textures on phones</td><td>Texture larger than <code>MAX_TEXTURE_SIZE</code> (often 4096)</td><td>Black or missing materials</td><td>"Textures ≤ 2048, KTX2 where possible"</td></tr>
+<tr><td>Agent cannot test controls</td><td>Pointer lock needs a real click</td><td>Movement never verified</td><td>"Add a scripted camera mode and URL parameters"</td></tr>
+</tbody></table></div>
+<p>Rows 1–5 and 10 are <span class="tag verified">Verified</span> against the <a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide">Three.js migration guide</a> and Khronos issues; the rest are <span class="tag practice">Practice</span>. Three.js now publishes <a href="https://threejs.org/docs/llms.txt"><code>llms.txt</code></a> for exactly this reason: it tells models to use import maps and to pin the latest version. <span class="tag verified">Verified</span> In AA-3D, 23 scenes broke on the voting page and were excluded, leaving 1,008. <span class="tag verified">Verified</span></p>
+
+<h2>Skills and rules</h2>
+<p>Several community "skill" packs teach agents Three.js: <a href="https://github.com/cloudai-x/threejs-skills">CloudAI-X/threejs-skills</a> (3,588 stars, no licence listed), <a href="https://github.com/dgreenheck/webgpu-claude-skill">dgreenheck/webgpu-claude-skill</a> (1,252 stars), R3F skill packs and others. <span class="tag verified">Verified</span> <b>Evidence that they help is thin.</b> I found no controlled study. The one detailed account I found, night-street's own survey, called the installed skills "flat API catalogues with no measurement", useful for "what an API is" but "no help … with what number to put in it". Its most useful source was the previous project's code comments. <span class="tag verified">Verified</span> (one author's opinion) My reading: a short project rules file (pinned versions, banned APIs, the test loop, asset policy) is cheaper and more reliable than a big skill pack. <span class="tag inference">Inference</span></p>
+
+<h2 id="mcp">MCP servers for engines and Blender</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Target</th><th>Server</th><th>Licence, stars</th><th>Eyes (screenshots)</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Unreal 5.8</td><td><a href="https://dev.epicgames.com/documentation/unreal-engine/unreal-mcp-in-unreal-editor?lang=en-US">Built-in Unreal MCP</a> + Epic's <a href="https://github.com/EpicGames/unreal-engine-skills-for-claude-code-plugin">Claude Code plugin</a></td><td>UE EULA; plugin MIT, 550</td><td>Viewport capture, logs, automation tests</td><td><span class="tag experimental">Experimental</span>; no auth on localhost; enable AllToolsets or no tools appear</td></tr>
+<tr><td>Unreal (community)</td><td><a href="https://github.com/ChiR24/Unreal_mcp">ChiR24/Unreal_mcp</a></td><td>MIT, 957</td><td>Screenshots via <code>control_editor</code></td><td>Active; older chongdashu/unreal-mcp is stale (2025-04)</td></tr>
+<tr><td>Unity 6</td><td>Unity CLI <code>unity mcp</code> (official)</td><td>Free, proprietary</td><td>Not verified</td><td>Replaces the deprecated in-editor MCP</td></tr>
+<tr><td>Unity (community)</td><td><a href="https://github.com/CoplayDev/unity-mcp">CoplayDev/unity-mcp</a>; <a href="https://github.com/IvanMurzak/Unity-MCP">IvanMurzak/Unity-MCP</a></td><td>MIT, 15,045; Apache-2.0, 4,486</td><td><code>camera screenshot</code>, multi-view; <code>screenshot-game-view</code></td><td>Active</td></tr>
+<tr><td>Godot 4.7</td><td><a href="https://github.com/Coding-Solo/godot-mcp">godot-mcp</a>; <a href="https://github.com/hi-godot/godot-ai">godot-ai</a></td><td>MIT, 6,130; MIT, 3,032</td><td>Console only; screenshots not verified</td><td>godot-ai has telemetry on by default</td></tr>
+<tr><td>Blender 5.x</td><td><a href="https://github.com/ahujasid/mcp-for-blender">mcp-for-blender</a> (was blender-mcp)</td><td>MIT, 31,342</td><td><code>look</code>: viewport, camera, multi-angle, wireframe, render</td><td><code>execute_blender_code</code> runs arbitrary Python (CVE-2026-10688)</td></tr>
+<tr><td>Blender 5.1+</td><td><a href="https://www.blender.org/lab/mcp-server/">Blender Lab MCP</a> (official)</td><td>Licence unverified</td><td>Scene inspection</td><td>v1.0.3; deliberately small</td></tr>
+</tbody></table></div>
+<p>All stars are from the GitHub API on 2026-10-17. <span class="tag verified">Verified</span></p>
+<div class="callout warn"><span class="callout-title">Security: these servers execute code by design</span>Blender MCP runs model-written Python with full access. Epic's Unreal MCP has no authentication, and "localhost is not a trust boundary": any same-user process can connect. Anything the agent reads (asset descriptions, web pages, tool descriptions) can try to steer it. Use a throwaway project under version control, keep secrets out of the environment, and prefer per-call approval over "skip permissions" modes. <span class="tag verified">Verified</span> (READMEs, CVE record) / <span class="tag practice">Practice</span> (mitigations)</div>
+<p><b>Two styles of engine automation:</b></p>
+<ul>
+  <li><b>Headless scripts</b>, no MCP: <code>blender -b --python build.py</code>, <code>godot --headless --script</code>, <code>UnrealEditor … -run=pythonscript</code>, <code>Unity -batchmode -executeMethod</code>. You read the output PNG. Easier to secure and reproduce.</li>
+  <li><b>Live editor over MCP</b>: more interactive, more powerful, more risk.</li>
+</ul>
+<p><span class="tag inference">Inference</span></p>
+
+<h2>Practical rules for your own runs</h2>
+<ol>
+  <li>Pin versions in the first prompt and name the APIs that are banned.</li>
+  <li>Require a test script from turn one: open the page, fail on any console error, screenshot from 2–3 fixed poses.</li>
+  <li>Ask for a HUD with FPS and draw calls, and URL parameters for camera, time and seed.</li>
+  <li>Give a visual target: reference photos, or a precise description of light and mood.</li>
+  <li>Review the screenshots yourself every few iterations; the agent's taste is not yours.</li>
+  <li>Stop it from "fixing" by deleting features: list the must-haves.</li>
+</ol>
+</main>
+</body>
+</html>

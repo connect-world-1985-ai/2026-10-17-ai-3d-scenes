@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 · Meshes, PBR materials, light and tone mapping — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part II — Fundamentals</div>
+<h1>Meshes, PBR materials, light and tone mapping</h1>
+<p class="lead">Why does one agent-made scene look like a plastic toy and another like a photograph? Rarely because of more triangles. Mostly because of five things: physically based materials, light that comes from an environment rather than a single lamp, believable shadows, correct colour handling, and tone mapping. Each is a few lines of code, which is why agents can get them right — and why they often forget one.</p>
+
+<h2>Meshes: geometry + material</h2>
+<p>A <b>mesh</b> = <b>geometry</b> (vertex positions, normals, texture coordinates (UVs), triangle indices) + <b>material</b> (how the surface reacts to light). In Three.js: <code>new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color: 0x888888}))</code>.</p>
+<ul>
+  <li><b>Normals</b> are per-vertex directions used for lighting. Flat versus smooth shading is only a question of whether neighbouring triangles share normals.</li>
+  <li><b>UVs</b> map a 2D image onto the surface. Procedural boxes have simple UVs; generated meshes (<a href="10-assets.html">page 10</a>) often have messy ones.</li>
+  <li>Real assets usually arrive as <b>glTF/GLB</b> (the "JPEG of 3D", ISO/IEC 12113:2022), which carries geometry, PBR materials, textures and animation in one file. <span class="tag verified">Verified</span></li>
+</ul>
+
+<h2>Physically based rendering (PBR)</h2>
+<p>PBR materials describe a surface with a few physical parameters instead of artistic hacks. The renderer then computes how light bounces off them using approximations of real optics (microfacet theory). The two that matter most:</p>
+<ul>
+  <li><b>Metalness</b> (0 or 1, rarely between). Metals have no diffuse colour; their reflections are tinted. Non-metals (dielectrics) have a diffuse colour plus a weak, white reflection of about 4% at normal incidence.</li>
+  <li><b>Roughness</b> (0–1): how blurry reflections are. Roughness 0 is a mirror; 1 is chalk.</li>
+</ul>
+<p>Plus <b>base colour</b> (albedo), <b>normal maps</b> (fake small bumps), <b>ambient occlusion</b>, <b>emissive</b> (glowing windows, neon). <code>MeshPhysicalMaterial</code> adds clearcoat (car paint), transmission (glass), sheen (cloth) and iridescence.</p>
+<p>The <b>Fresnel effect</b> (Schlick's approximation) is why PBR looks real: every surface becomes more reflective at grazing angles. It is why a lake mirrors the sky near the horizon but shows the bottom at your feet, and why <a href="07-ocean.html">oceans</a> look right only when Fresnel is in the shader.</p>
+
+<h2>Light: direct and image-based</h2>
+<p>Real-time engines combine two kinds of light <span class="tag practice">Practice</span>:</p>
+<ul>
+  <li><b>Direct lights</b>: directional (the sun, parallel rays), point (a bulb), spot (a street lamp), plus hemisphere (sky above, ground below) as a cheap ambient. Each casts shadows only if you ask and pay for it.</li>
+  <li><b>Image-based lighting (IBL)</b>: a 360° picture of the surroundings (an <b>HDRI</b> or environment map) lights every surface from every direction. Without it, metals reflect nothing and look black. Three.js pre-filters the map with <code>PMREMGenerator</code> so rough surfaces sample a blurrier version. Set <code>scene.environment = texture</code> and every standard material uses it.</li>
+</ul>
+<p>Free HDRIs come from <a href="https://polyhaven.com/hdris">Poly Haven</a> (CC0). Without any file, Three.js's <code>RoomEnvironment</code> or a rendered sky (<a href="07-ocean.html">page 07</a>) works as an environment. <span class="tag verified">Verified</span> One of the strongest visual upgrades an agent can make is adding an environment map. <span class="tag inference">Inference</span></p>
+
+<h2>Shadows</h2>
+<p>Real-time shadows are mostly <b>shadow maps</b>: render the scene once from the light's point of view, store depth, then for each pixel ask "is something closer to the light than me?".</p>
+<ul>
+  <li><b>Resolution versus coverage.</b> One 2048² map stretched over a whole city gives blocky shadows. Fix it by keeping the light's shadow camera box tight, or with <b>cascaded shadow maps</b>: several maps at different distances. Three.js r186 added a <code>SunLight</code> with cascades in the WebGPU path. <span class="tag verified">Verified</span></li>
+  <li><b>Acne and peter-panning.</b> Striped self-shadowing ("acne") is fixed with a small negative <code>shadow.bias</code>. Too much bias detaches shadows from objects ("peter-panning").</li>
+  <li><b>Soft shadows.</b> In r186 <code>PCFSoftShadowMap</code> was removed; <code>PCFShadowMap</code> is now soft. Agents trained on older code still emit the removed constant and get a console warning. <span class="tag verified">Verified</span> (seen while building this guide)</li>
+  <li><b>Contact shadows and ambient occlusion</b> (SSAO, GTAO) darken creases where ambient light cannot reach. They are cheap realism for cities.</li>
+</ul>
+
+<h2>Colour management and tone mapping</h2>
+<p>Lighting maths happens in <b>linear</b> light with values that can exceed 1 (the sun is far brighter than a white wall). Screens show 0–1 in a non-linear sRGB encoding. Two steps bridge that gap:</p>
+<ol>
+  <li><b>Colour space.</b> Colour textures (albedo) are sRGB and must be tagged <code>texture.colorSpace = THREE.SRGBColorSpace</code>; data textures (normal, roughness) stay linear. Output is sRGB by default since r152. Mistagging gives washed-out or too-dark results, one of the most common agent bugs. <span class="tag verified">Verified</span></li>
+  <li><b>Tone mapping</b> compresses HDR to the screen range, like a camera does. Three.js offers None, Linear, Reinhard, Cineon, ACES Filmic, AgX and Neutral; the default is none. <span class="tag verified">Verified</span>
+    <ul>
+      <li><b>ACES Filmic</b>: punchy and filmic. Three.js's version contains a built-in 1/0.6 exposure boost, which is why official demos use tiny exposures such as 0.1. <span class="tag verified">Verified</span></li>
+      <li><b>AgX</b> (from Blender, Blender's default since 4.0): more natural highlight roll-off; bright colours go towards white like a real camera.</li>
+      <li><b>Khronos PBR Neutral</b> (2024): faithful product colours, little drama.</li>
+    </ul>
+    Pick the operator, then adjust <code>toneMappingExposure</code>.</li>
+</ol>
+
+<h2 id="demo-pbr">Try it: PBR, light and tone mapping</h2>
+<p>Things to try:</p>
+<ul>
+  <li>Set metalness to 1 and the environment to <i>none</i>: the metal goes black, because it has nothing to reflect.</li>
+  <li>Switch tone mapping between <i>none</i> and <i>ACES</i> with the key light at 6: watch highlights clip versus roll off.</li>
+  <li>Drag roughness from 0 to 1 on the sunset environment.</li>
+</ul>
+<div class="demo">
+  <div class="demo-head"><span class="live">LIVE</span> MeshPhysicalMaterial under environment + key light <span class="src">Three.js r186 · assets/js/demos/pbr.js</span></div>
+  <div class="demo-stage" id="pbrStage"><canvas></canvas><div class="hud"></div></div>
+  <div class="demo-controls">
+    <label><div class="row">Metalness <span class="v" id="pbrMetalV"></span></div><input type="range" id="pbrMetal" min="0" max="1" step="0.01" value="1"></label>
+    <label><div class="row">Roughness <span class="v" id="pbrRoughV"></span></div><input type="range" id="pbrRough" min="0" max="1" step="0.01" value="0.3"></label>
+    <label><div class="row">Clearcoat <span class="v" id="pbrCoatV"></span></div><input type="range" id="pbrCoat" min="0" max="1" step="0.01" value="0"></label>
+    <label><div class="row">Key light intensity <span class="v" id="pbrKeyV"></span></div><input type="range" id="pbrKey" min="0" max="6" step="0.1" value="2.5"></label>
+    <label><div class="row">Key light angle <span class="v" id="pbrKeyAV"></span></div><input type="range" id="pbrKeyA" min="0" max="360" step="1" value="40"></label>
+    <label><div class="row">Environment intensity <span class="v" id="pbrEnvIV"></span></div><input type="range" id="pbrEnvI" min="0" max="2" step="0.05" value="1"></label>
+    <label><div class="row">Exposure <span class="v" id="pbrExpoV"></span></div><input type="range" id="pbrExpo" min="0.2" max="3" step="0.05" value="1"></label>
+    <label>Base colour <input type="color" id="pbrColor" value="#c8a165"></label>
+    <label>Environment <select id="pbrEnv"><option value="room">RoomEnvironment (studio)</option><option value="sunset">Procedural sunset</option><option value="none">None (lights only)</option></select></label>
+    <label>Tone mapping <select id="pbrTM"><option value="aces">ACES Filmic</option><option value="agx">AgX</option><option value="neutral">Khronos PBR Neutral</option><option value="reinhard">Reinhard</option><option value="linear">Linear</option><option value="none">None</option></select></label>
+    <label class="check"><input type="checkbox" id="pbrShadow" checked> Shadows</label>
+    <label class="check"><input type="checkbox" id="pbrSpin" checked> Spin</label>
+  </div>
+  <p class="demo-note">Drag to orbit. Both objects share one material, so every slider changes both. The sunset environment is a gradient drawn on a 2D canvas and pre-filtered with PMREM: no image files.</p>
+</div>
+
+<h2>Post-processing</h2>
+<p>After the scene is drawn, full-screen passes run on the image. In Three.js's WebGL path you chain them with <code>EffectComposer</code>; WebGPU uses TSL nodes instead (<code>EffectComposer</code> is not supported there). <span class="tag verified">Verified</span></p>
+<div class="table-wrap"><table>
+<thead><tr><th>Effect</th><th>What it adds</th><th>Cost</th><th>Agent pitfall</th></tr></thead>
+<tbody>
+<tr><td>Bloom (<code>UnrealBloomPass</code>)</td><td>Glow around bright pixels: neon, street lamps, sun glint</td><td>Medium (blur chain)</td><td>Too strong makes everything a haze; threshold too low blooms white walls</td></tr>
+<tr><td>SSAO / GTAO</td><td>Contact darkening in corners and between buildings</td><td>Medium to high</td><td>Halo artefacts around edges</td></tr>
+<tr><td>Fog (not a pass: <code>scene.fog</code>)</td><td>Depth, scale, hides the far clip</td><td>Almost free</td><td>Fog colour not matching sky gives a grey band at the horizon</td></tr>
+<tr><td>Depth of field, motion blur</td><td>Cinematic feel</td><td>Medium to high</td><td>Disorienting in first-person</td></tr>
+<tr><td>Colour grading / LUT, vignette, film grain</td><td>Mood</td><td>Low</td><td>Over-grading hides detail</td></tr>
+<tr><td>Anti-aliasing (FXAA, SMAA, TAA)</td><td>Smooth edges once MSAA is lost in composer</td><td>Low to medium</td><td>Forgetting AA after adding a composer gives jaggies</td></tr>
+</tbody></table></div>
+<p>Bloom in modern engines descends from Jimenez's mip-pyramid approach (<a href="https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/">SIGGRAPH 2014, Call of Duty: Advanced Warfare</a>). <span class="tag verified">Verified</span> Whether Three.js's <code>UnrealBloomPass</code> uses exactly that filter I did not check. <span class="tag unverified">Unverified</span></p>
+
+<div class="callout good"><span class="callout-title">The "make it look real" checklist (in order of payoff)</span>
+<ol>
+  <li>Environment map (HDRI or rendered sky) for every PBR material.</li>
+  <li>Tone mapping on (ACES or AgX), exposure tuned.</li>
+  <li>Correct colour spaces on textures.</li>
+  <li>One shadow-casting sun with a tight shadow box.</li>
+  <li>Fog that matches the sky colour.</li>
+  <li>Restrained bloom on emissive lights.</li>
+  <li>Some roughness variation: nothing in the real world is uniformly smooth.</li>
+</ol>
+<span class="tag inference">Inference</span>, distilled from the official Three.js examples and the failure lists on <a href="11-agent-workflow.html">page 11</a>.</div>
+
+<h2>Further reading</h2>
+<ul>
+  <li><a href="https://learnopengl.com/PBR/Theory">LearnOpenGL: PBR theory</a>: the clearest derivation for programmers.</li>
+  <li><a href="https://google.github.io/filament/Filament.html">Filament: Physically Based Rendering in Filament</a>: Google's reference document, also the source of Three.js's AgX.</li>
+  <li><a href="https://threejs.org/manual/#en/color-management">Three.js manual: Color management</a>.</li>
+  <li><a href="https://github.com/KhronosGroup/ToneMapping/blob/main/PBR_Neutral/README.md">Khronos PBR Neutral</a> specification.</li>
+</ul>
+</main>
+<script src="assets/js/demos/pbr.js"></script>
+</body>
+</html>

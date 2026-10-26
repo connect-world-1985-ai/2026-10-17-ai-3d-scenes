@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sources and method — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Reference</div>
+<h1>Sources and method</h1>
+<p class="lead">How this guide was researched, what the evidence tags mean, the key sources behind each page, where sources disagree, and what was not checked. All research and every number are dated <b>2026-10-17</b> unless a source date is given.</p>
+
+<h2 id="method">Method</h2>
+<ol>
+  <li><b>Research.</b> Six research subagents each wrote a fact sheet from fresh web sources, with a URL and an evidence tag on every claim:
+    <ul>
+      <li>browser real-time rendering;</li>
+      <li>shaders and recipes;</li>
+      <li>engines and MCP servers;</li>
+      <li>geodata, capture and generative 3D;</li>
+      <li>assets and licences;</li>
+      <li>agent workflows.</li>
+    </ul>
+  </li>
+  <li><b>Verification by the main agent.</b> Key claims were re-checked before writing:
+    <ul>
+      <li>stars and licences of 25 repositories through the GitHub API (<code>gh api repos/…</code>);</li>
+      <li>the AA-3D launch article, re-read in full;</li>
+      <li>the night-street README and <code>PROMPTS.md</code>;</li>
+      <li>Epic's City Sample 5.8 page;</li>
+      <li>the Google Map Tiles policies;</li>
+      <li>Three.js r186 release notes, and the CDN response headers for <code>three@0.186.1</code>.</li>
+    </ul>
+    Where a page wording went beyond its source, it was corrected.</li>
+  <li><b>Writing.</b> The main agent wrote every page and every demo.</li>
+  <li><b>Testing.</b> A Playwright script (<code>playwright-core</code> driving installed Microsoft Edge, headless, with <code>--enable-unsafe-swiftshader</code>):
+    <ul>
+      <li>opened every page from <code>file://</code>;</li>
+      <li>collected console errors and page errors;</li>
+      <li>screenshotted each demo and read its HUD;</li>
+      <li>repeated the runs offline (network blocked) and at 390 px width;</li>
+      <li>checked every internal link and <code>#anchor</code>.</li>
+    </ul>
+    Demo screenshots used a software renderer, so their FPS numbers are not representative.</li>
+</ol>
+<p>The working files (tracker, research notes, QA script and screenshots) are in <code>docs/memory/memory-20261017-ai-3d-scenes-research/</code> next to this site.</p>
+
+<h2 id="evidence-tags">Evidence tags</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Tag</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><span class="tag verified">Verified</span></td><td>Read in a primary source (official docs, the repository, the vendor or author page, or an API response) during this research. For a demo, "Verified" means its prompt and code are public, <b>not</b> that I reproduced it.</td></tr>
+<tr><td><span class="tag practice">Practice</span></td><td>Widely repeated engineering practice, or a credible secondary source (forums, blogs, one project's config).</td></tr>
+<tr><td><span class="tag inference">Inference</span></td><td>My reasoning from the facts shown. Treat it as an opinion with reasons.</td></tr>
+<tr><td><span class="tag unverified">Unverified</span></td><td>Not confirmed: a lead, a single social post, or a search summary.</td></tr>
+<tr><td><span class="tag experimental">Experimental</span></td><td>The vendor itself labels the feature experimental or beta.</td></tr>
+<tr><td><span class="tag plausible">Plausible</span> / <span class="tag promo">Promotional</span></td><td>Used only for demo claims on <a href="12-one-prompt-truth.html">page 12</a>: partly public and credible / marketing with nothing reproducible.</td></tr>
+</tbody></table></div>
+<p><b>Rules followed:</b></p>
+<ul>
+  <li>Every count, price and star number carries a date.</li>
+  <li>Star counts and licences come from the GitHub API, not scraped pages (scrapes showed "0 stars" for large repos).</li>
+  <li>No number was invented. Where none was found, the page says so.</li>
+  <li>Model names are quoted as the sources give them.</li>
+</ul>
+
+<h2 id="per-page">Key sources by page</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Page</th><th>Primary sources</th></tr></thead>
+<tbody>
+<tr><td><a href="01-taxonomy.html">01</a> Taxonomy</td><td><a href="https://threejs.org/manual/">three.js manual</a>, <a href="https://github.com/mrdoob/three.js/releases/tag/r186">r186 release</a>, <a href="https://www.unrealengine.com/learning/city-sample-gets-a-major-update-with-pcg-and-unreal-mcp-workflows">Epic City Sample 5.8</a>, <a href="https://developers.google.com/maps/documentation/tile/3d-tiles">Google 3D Tiles</a>, <a href="https://github.com/graphdeco-inria/gaussian-splatting">3DGS</a>, <a href="https://www.worldlabs.ai/">World Labs</a></td></tr>
+<tr><td><a href="02-rendering-basics.html">02</a>–<a href="03-materials-light.html">03</a> Basics, PBR</td><td><a href="https://threejs.org/docs/">three.js docs</a>, <a href="https://threejs.org/manual/">manual</a> (colour management, tone mapping), <a href="https://github.com/KhronosGroup/ToneMapping">Khronos PBR Neutral</a></td></tr>
+<tr><td><a href="04-shaders-sdf.html">04</a> Shaders and SDF</td><td><a href="https://iquilezles.org/articles/">Inigo Quilez articles</a>, <a href="https://thebookofshaders.com/">The Book of Shaders</a>, <a href="https://www.shadertoy.com/">ShaderToy</a></td></tr>
+<tr><td><a href="05-performance.html">05</a> Performance</td><td><a href="https://threejs.org/docs/#api/en/objects/InstancedMesh">InstancedMesh</a> / BatchedMesh docs, <a href="https://discourse.threejs.org/t/how-to-choose-between-instancedmesh-and-batchedmesh/81221">three.js forum</a></td></tr>
+<tr><td><a href="06-controls-collision.html">06</a> Controls</td><td><a href="https://threejs.org/examples/#games_fps">three.js games_fps example</a> (Octree, Capsule), <a href="https://github.com/StarKnightt/night-street">night-street</a> (walk speeds)</td></tr>
+<tr><td><a href="07-ocean.html">07</a> Ocean</td><td>three.js <code>Water</code> / <code>Sky</code> sources (Preetham sky), Tessendorf "Simulating Ocean Water", Rare's Sea of Thieves ocean paper (FFT), <a href="https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models">GPU Gems ch. 1</a> (Gerstner)</td></tr>
+<tr><td><a href="08-city.html">08</a> City</td><td>mrdoob's procedural city (2013), <a href="https://github.com/jeromeetienne/threex.proceduralcity">threex.proceduralcity</a>, <a href="https://github.com/skeeto/pixelcity">pixelcity</a>, <a href="https://github.com/srizzon/git-city">Git City</a></td></tr>
+<tr><td><a href="09-world-recipes.html">09</a> World</td><td><a href="https://github.com/mxgmn/WaveFunctionCollapse">WaveFunctionCollapse</a>, <a href="https://github.com/ebruneton/precomputed_atmospheric_scattering">Bruneton atmosphere</a>, three.js examples</td></tr>
+<tr><td><a href="10-assets.html">10</a> Assets</td><td><a href="https://polyhaven.com/license">Poly Haven</a>, <a href="https://docs.ambientcg.com/license/">ambientCG</a>, <a href="https://kenney.nl/support">Kenney</a>, <a href="https://sketchfab.com/blogs/community/kitbash-acquires-sketchfab-and-artstation/">Sketchfab / KitBash</a>, <a href="https://developers.google.com/maps/documentation/tile/policies">Google tile policies</a>, <a href="https://www.khronos.org/gltf/">glTF</a>, vendor pricing pages</td></tr>
+<tr><td><a href="11-agent-workflow.html">11</a> Agent workflow</td><td><a href="https://artificialanalysis.ai/articles/aa-3d">AA-3D</a>, <a href="https://github.com/microsoft/playwright-mcp">Playwright MCP</a>, <a href="https://github.com/ChromeDevTools/chrome-devtools-mcp">DevTools MCP</a>, <a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide">migration guide</a>, <a href="https://threejs.org/docs/llms.txt">llms.txt</a>, <a href="https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md">SwiftShader doc</a>, <a href="https://www.tenable.com/cve/CVE-2026-10688">CVE-2026-10688</a>, <a href="https://github.com/EpicGames/unreal-engine-skills-for-claude-code-plugin">Epic plugin</a></td></tr>
+<tr><td><a href="12-one-prompt-truth.html">12</a> One-prompt truth</td><td>Repos and pages linked in its table; <a href="https://threejseval.com/models">threejseval</a>, <a href="https://todofor.ai/bench/threejs-bench">ThreeJSBench</a>, <a href="https://dabench.ai/showcase/boat-game">DaBench</a>, <a href="https://arena.ai/blog/webdev-arena">WebDev Arena</a></td></tr>
+<tr><td><a href="13-practical.html">13</a> Practical</td><td><a href="https://caniuse.com/webgpu">caniuse WebGPU</a> / <a href="https://caniuse.com/webgl2">WebGL2</a>, <a href="https://developer.chrome.com/docs/web-platform/webgpu/overview">Chrome</a>, <a href="https://webkit.org/blog/17333/webkit-features-in-safari-26-0/">WebKit</a>, <a href="https://developer.playcanvas.com/user-manual/engine/supported-browsers/">PlayCanvas browser list</a>, host limit pages, <a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaStream_Recording_API">MDN</a>, <a href="https://github.com/spite/ccapture.js">CCapture</a>, <a href="https://mediabunny.dev/guide/introduction">Mediabunny</a></td></tr>
+<tr><td><a href="14-decision.html">14</a> Decision</td><td><a href="https://www.unrealengine.com/en-US/license">Unreal licence</a>, <a href="https://unity.com/releases/unity-6">Unity 6</a>, <a href="https://www.sidefx.com/buy/">SideFX</a>, <a href="https://cesium.com/platform/cesium-ion/pricing/">Cesium ion</a>, <a href="https://developers.google.com/maps/billing-and-pricing/pricing-categories">Google pricing categories</a></td></tr>
+</tbody></table></div>
+
+<h2 id="conflicts">Conflicts between sources</h2>
+<ol>
+  <li><b>AA-3D top score:</b> the article gives Claude Sonnet 5.5 1194; the evaluation page 1197 ± 33, same date. The top four are tied either way.</li>
+  <li><b>WebGPU in Firefox and Safari:</b> caniuse says "disabled by default" / "partial"; Mozilla and WebKit say shipped. Vendor statements used for shipping status.</li>
+  <li><b>WebGPURenderer maturity:</b> the three.js manual says "experimental", while official examples and well-known sites ship on it.</li>
+  <li><b>SwiftShader removal:</b> blink-dev gives Chrome 137 / 139 experiments; a search summary says "disabled by default in 141". The exact version is unconfirmed; the opt-in flag works.</li>
+  <li><b>Frame timing:</b> night-street says <code>gl.finish</code> returns early in Chromium (use <code>readPixels</code>); Claudepunk2077 reports timings measured with <code>gl.finish</code>.</li>
+  <li><b>Usefulness of skill packs:</b> their READMEs claim docs-audited content; the night-street author found them "actively wrong" for high-end visuals.</li>
+  <li><b>CCapture.js:</b> the classic API in tutorials vs the 2026 rewrite in the README.</li>
+  <li><b>Sketchfab ownership and downloads:</b> sold by Epic to KitBash (2026-08-10); earlier messaging said downloads would end, the new owner says they continue.</li>
+  <li><b>Prices:</b>
+    <ul>
+      <li>Houdini Indie: $299 vs $269.</li>
+      <li>Houdini Engine: $525 vs $499.</li>
+      <li>Unreal subscription bundle contents.</li>
+      <li>Polycam plan names.</li>
+      <li>Marble's commercial-rights tier (terms vs billing page).</li>
+      <li>Google 3D Tiles: the price above the free cap is from a third party.</li>
+    </ul>
+  </li>
+  <li><b>Sea of Thieves ocean:</b> often said to be Gerstner; Rare's paper says FFT.</li>
+  <li><b>mrdoob's city:</b> sometimes dated 2012; the evidence says 2013.</li>
+</ol>
+
+<h2 id="gaps">Known gaps and limits</h2>
+<ul>
+  <li><b>No demo from other people was re-run.</b> I did not reproduce any of the examples on <a href="12-one-prompt-truth.html">page 12</a>.</li>
+  <li><b>Browsers:</b> the site was tested only in Chromium (Edge 154) from <code>file://</code>. Firefox and Safari were not tested; import maps and WebGL2 should work there, but this is unconfirmed.</li>
+  <li><b>Performance:</b> no measured FPS on real integrated, discrete or mobile GPUs for any scene, mine or anyone else's. The demos' HUD numbers in testing came from a software renderer.</li>
+  <li><b>Demo limitations:</b>
+    <ul>
+      <li>The city demo's street-level view is somewhat hazy at night (bloom plus fog).</li>
+      <li>The ocean demo's buoy looks dark when backlit by a low sun.</li>
+      <li>The 3D demos need the unpkg CDN; offline they show a fallback message. The raymarch and wave demos are raw WebGL and work offline.</li>
+    </ul>
+  </li>
+  <li><b>Prices not researched:</b> subscription plans for coding agents; CodePen and JSFiddle limits; Netlify and Vercel header configuration.</li>
+  <li><b>Not confirmed:</b>
+    <ul>
+      <li>the CVE-2026-10688 status after the mcp-for-blender 2.0 rename;</li>
+      <li>the Blender Lab MCP licence;</li>
+      <li>Unity CLI screenshot tools;</li>
+      <li>Godot MCP screenshot support;</li>
+      <li>whether <code>puppeteer-capture</code> needs <code>chrome-headless-shell</code>.</li>
+    </ul>
+  </li>
+  <li><b>No controlled study</b> of whether skills or rules files improve AI-written 3D code.</li>
+  <li><b>Primary sources not read:</b> Karpathy's post (secondary only), X/Twitter threads (mirrors only), Google AI Studio app system prompts.</li>
+  <li><b>Moving targets:</b> star counts, prices and leaderboards change daily; every figure here is a 2026-10-17 snapshot.</li>
+</ul>
+</main>
+</body>
+</html>

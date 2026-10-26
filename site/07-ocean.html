@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · Recipe: a realistic ocean with sky, sun and reflections — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part III — Recipes</div>
+<h1>Recipe: ocean with sky, sun and reflections</h1>
+<p class="lead">"A realistic ocean at sunset" is one of the most common prompts in AI-3D demos, because the payoff is huge for little code: a sun glitter path, a horizon that melts into the sky, waves that catch the light. Under the hood there is a clear ladder, from a flat blue plane to film-grade FFT spectra. Most agent demos stop at rung 2 or 3, and that is usually enough.</p>
+
+<h2>Anatomy of an ocean picture</h2>
+<p>An ocean is mostly <b>reflected sky</b>. Five ingredients make it convincing <span class="tag practice">Practice</span>:</p>
+<ol>
+  <li><b>Wave shape</b>: the surface moves (vertex displacement) and has small ripples (normal maps).</li>
+  <li><b>Fresnel</b>: near the horizon the water is a mirror; at your feet it is dark and deep-coloured.</li>
+  <li><b>Sky and sun</b>: something worth reflecting, plus a bright specular highlight that becomes a glitter path.</li>
+  <li><b>Subsurface colour</b>: light passing through thin wave crests turns them turquoise.</li>
+  <li><b>Foam</b> where waves fold over, and a horizon that blends with fog or atmosphere.</li>
+</ol>
+
+<h2>Wave models</h2>
+<h3>Sum of sines</h3>
+<p>Add a few sine waves with different directions, wavelengths and speeds to a flat grid in the vertex shader. Smooth and rolling, but crests are as round as troughs, which reads as "jelly". Mark Finch's chapter in <a href="https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models">GPU Gems 1, ch. 1</a> (used in <i>Uru: Ages Beyond Myst</i>) is the classic reference. <span class="tag verified">Verified</span></p>
+<h3>Gerstner (trochoidal) waves</h3>
+<p>Move vertices <b>horizontally</b> towards the crests as well as up and down. Crests sharpen and troughs widen, just like real deep-water waves. A steepness parameter <i>Q</i> controls it: 0 gives sines; <i>Q</i> = 1/(<i>kA</i>) per wave gives sharp crests; higher values make the surface loop over itself (the same chapter). <span class="tag verified">Verified</span> Unreal's built-in Water system uses Gerstner waves. <span class="tag verified">Verified</span> (UE 4.27 docs)</p>
+<pre><code>// one Gerstner wave: direction D (unit 2D), wavenumber k = 2π/L, amplitude A, steepness Q
+float phase = k * dot(D, p.xz) - sqrt(9.81 * k) * time;   // deep-water dispersion ω = √(g k)
+p.xz += Q * A * D * cos(phase);
+p.y  +=     A     * sin(phase);</code></pre>
+<p>The <code>sqrt(9.81 * k)</code> term (deep-water dispersion) makes long waves travel faster than short ones. That one line is why a few Gerstner waves look like sea rather than a screensaver.</p>
+<h3>FFT ocean (Tessendorf)</h3>
+<p>Instead of a handful of waves, use <b>hundreds of thousands</b>. Generate random wave amplitudes that follow a measured ocean spectrum (Phillips or JONSWAP), then sum them all at once with an inverse Fast Fourier Transform on a tiling grid each frame. That is J. Tessendorf's <a href="https://jtessen.people.clemson.edu/reports/papers_files/coursenotes2004.pdf">"Simulating Ocean Water"</a>, used across film and games. Sea of Thieves uses this FFT technique, stylised (SIGGRAPH 2018), not Gerstner as often assumed. <span class="tag verified">Verified</span></p>
+<ul>
+  <li><b>Cascades</b>: 3–4 FFT tiles at different scales hide visible repetition. NVIDIA uses 4. The single-file WebGL demo <a href="https://github.com/squall01337/abyssal-ocean">abyssal-ocean</a> (MIT, 55 stars) uses 3 tiles of 768 m, 121 m and 19 m. <span class="tag verified">Verified</span> (README)</li>
+  <li><b>Jacobian foam</b>: where the displaced surface folds over itself (the Jacobian determinant drops below a threshold of about 0.3–0.5), waves are breaking. Paint foam there and let it fade over time (<a href="https://developer.download.nvidia.com/assets/gameworks/downloads/regular/events/cgdc15/CGDC2015_ocean_simulation_en.pdf">NVIDIA CGDC 2015 slides</a>). <span class="tag verified">Verified</span></li>
+  <li>The best explanations are videos: Acerola's <a href="https://www.youtube.com/watch?v=yPfagLeUa7k">"I Tried Simulating The Entire Ocean"</a>, where a sum of waves hit its limit at ~650 waves while the FFT version showed 4.2 million waves at 150 fps on his GPU (transcript), and Jump Trajectory's <a href="https://www.youtube.com/watch?v=kGEqaX4Y4bQ">FFT ocean video</a> with its <a href="https://github.com/gasgiant/FFT-Ocean">Unity code</a> (MIT, 808 stars, "a prototype"). <span class="tag verified">Verified</span></li>
+</ul>
+
+<h2 id="demo-waves">Try it: sines vs Gerstner waves</h2>
+<p>A 200 × 200 grid (80k triangles), displaced in the vertex shader. Raw WebGL, so it works <b>offline</b>. Things to try:</p>
+<ul>
+  <li>Switch between <i>sum of sines</i> and <i>Gerstner</i> with choppiness at 1.0 and look at the crests.</li>
+  <li>Push choppiness past 1.2: the surface folds, and foam (computed from the Jacobian) appears exactly there.</li>
+  <li>Drop the sun to 3° for a glitter path.</li>
+  <li>Use the <i>normals</i> view to see what the lighting sees.</li>
+</ul>
+<div class="demo">
+  <div class="demo-head"><span class="live">LIVE</span> Wave toy: displacement, Fresnel, foam <span class="src">raw WebGL · assets/js/demos/waves.js</span></div>
+  <div class="demo-stage" id="wvStage"><canvas></canvas><div class="hud"></div></div>
+  <div class="demo-controls">
+    <label>Wave model <select id="wvModel"><option value="gerstner">Gerstner (trochoidal)</option><option value="sine">Sum of sines</option></select></label>
+    <label><div class="row">Number of waves <span class="v" id="wvNV"></span></div><input type="range" id="wvN" min="1" max="8" step="1" value="5"></label>
+    <label><div class="row">Amplitude of the biggest wave <span class="v" id="wvAV"></span></div><input type="range" id="wvA" min="0" max="2" step="0.05" value="0.6"></label>
+    <label><div class="row">Wavelength of the biggest wave <span class="v" id="wvLV"></span></div><input type="range" id="wvL" min="4" max="60" step="1" value="24"></label>
+    <label><div class="row">Choppiness Q <span class="v" id="wvQV"></span></div><input type="range" id="wvQ" min="0" max="1.6" step="0.05" value="0.7"></label>
+    <label><div class="row">Wind direction <span class="v" id="wvDirV"></span></div><input type="range" id="wvDir" min="0" max="360" step="1" value="30"></label>
+    <label><div class="row">Directional spread <span class="v" id="wvSpreadV"></span></div><input type="range" id="wvSpread" min="0" max="90" step="1" value="35"></label>
+    <label><div class="row">Sun elevation <span class="v" id="wvSunV"></span></div><input type="range" id="wvSun" min="2" max="80" step="1" value="12"></label>
+    <label>Shading <select id="wvShade"><option value="0">Full (Fresnel + sky + sun + SSS)</option><option value="1">Normals</option><option value="2">Height</option></select></label>
+    <label class="check"><input type="checkbox" id="wvFoam" checked> Foam where the surface folds</label>
+  </div>
+  <p class="demo-note">Drag to orbit, scroll to zoom. Each extra wave is 0.62× shorter and smaller than the previous one, so steepness stays roughly constant. The grid gets coarser with distance (quadratic spacing) out to 220 m. The sky is a separate full-screen pass using the same sky function the water reflects.</p>
+</div>
+
+<h2>Shading the water</h2>
+<ul>
+  <li><b>Reflection.</b> Cheapest: look up the sky colour in the reflected direction. That alone gives most of the realism in open sea. <b>Planar reflection</b> (render the scene again, mirrored: Three.js <code>Reflector</code> and <code>Water</code>) is exact for flat water but doubles the render cost. <b>Screen-space reflections</b> (SSR) are cheap but lose everything that is off-screen. <span class="tag practice">Practice</span></li>
+  <li><b>Fresnel</b> mixes reflection and the deep-water colour by viewing angle (Schlick's approximation). Seascape uses a cheap <code>pow(1 - dot(n, -eye), 3)</code> capped at 0.5. <span class="tag verified">Verified</span></li>
+  <li><b>Sun specular</b>: a very sharp highlight; with many small normals it breaks into a glitter path.</li>
+  <li><b>Subsurface scattering (approximation)</b>: add turquoise where crests are high and the sun is behind them. Sea of Thieves blends deep and subsurface colour by view angle, sun direction and a wave-peak mask. <span class="tag verified">Verified</span></li>
+  <li><b>Refraction and depth colour</b> matter near shores and in shallow pools: Three.js <code>Water2</code> (Reflector + Refractor, flow maps).</li>
+</ul>
+
+<h2>Sky and atmosphere</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Model</th><th>What it gives</th><th>Web availability</th></tr></thead>
+<tbody>
+<tr><td>Gradient + sun disc</td><td>Cheap, stylised</td><td>A few lines of shader (this guide's wave toy)</td></tr>
+<tr><td><a href="https://doi.org/10.1145/311535.311545">Preetham 1999</a></td><td>Analytic daylight from turbidity and sun position; weak at sunset</td><td>Three.js <code>Sky</code> / <code>SkyMesh</code> are Preetham-based, now with cloud uniforms <span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://doi.org/10.1145/2185520.2185591">Hosek–Wilkie 2012</a></td><td>Better sunsets and turbid skies; drop-in Preetham replacement</td><td>Reference C code; ports exist</td></tr>
+<tr><td><a href="https://inria.hal.science/inria-00288758">Bruneton 2008</a></td><td>Precomputed multiple scattering; views from ground to space</td><td><a href="https://github.com/ebruneton/precomputed_atmospheric_scattering">BSD-3 reference</a> with an online WebGL demo (1,071 stars)</td></tr>
+<tr><td><a href="https://doi.org/10.1111/cgf.14050">Hillaire 2020</a></td><td>Unreal's production sky: scalable, small lookup tables</td><td><a href="https://github.com/sebh/UnrealEngineSkyAtmosphere">MIT reference</a> (860 stars), needs multi-pass work</td></tr>
+</tbody></table></div>
+<p>The key trick for unity between water, sky and objects: <b>render the sky into an environment map</b> (<code>PMREMGenerator.fromScene</code>) and use it as <code>scene.environment</code>, so a boat or buoy is lit by the same sky the water reflects. The official <a href="https://threejs.org/examples/webgl_shaders_ocean.html">webgl_shaders_ocean</a> example does exactly this. <span class="tag verified">Verified</span></p>
+
+<h2 id="demo-ocean3">Try it: the library ocean (Water + Sky)</h2>
+<p>This is the Three.js route almost every "realistic ocean in Three.js" prompt ends up on, often copied nearly line for line from the official example: the <code>Water</code> add-on (planar reflection + scrolling normal maps + sun specular) and the <code>Sky</code> add-on (Preetham). <span class="tag inference">Inference</span> One difference here: the official example loads <code>waternormals.jpg</code>, which is not in the npm package. This demo generates a tileable normal map in code instead. Lower the sun elevation to below 3° for a sunset; raise turbidity for haze.</p>
+<div class="demo">
+  <div class="demo-head"><span class="live">LIVE</span> Three.js Water + Sky add-ons with a sky-lit buoy <span class="src">Three.js r186 · assets/js/demos/ocean3.js</span></div>
+  <div class="demo-stage" id="oc3Stage"><canvas></canvas><div class="hud"></div></div>
+  <div class="demo-controls">
+    <label><div class="row">Sun elevation <span class="v" id="oc3ElevV"></span></div><input type="range" id="oc3Elev" min="0" max="90" step="0.1" value="2"></label>
+    <label><div class="row">Sun azimuth <span class="v" id="oc3AzimV"></span></div><input type="range" id="oc3Azim" min="-180" max="180" step="1" value="180"></label>
+    <label><div class="row">Reflection distortion <span class="v" id="oc3DistV"></span></div><input type="range" id="oc3Dist" min="0" max="8" step="0.1" value="3.7"></label>
+    <label><div class="row">Ripple size <span class="v" id="oc3SizeV"></span></div><input type="range" id="oc3Size" min="0.1" max="10" step="0.1" value="1"></label>
+    <label><div class="row">Turbidity (haze) <span class="v" id="oc3TurbV"></span></div><input type="range" id="oc3Turb" min="0" max="20" step="0.1" value="10"></label>
+    <label><div class="row">Rayleigh (blue scattering) <span class="v" id="oc3RaylV"></span></div><input type="range" id="oc3Rayl" min="0" max="4" step="0.01" value="2"></label>
+  </div>
+  <p class="demo-note">Drag to orbit. The water is a flat plane: all the "waves" are normal-map detail plus distorted reflection. That is why it looks great from above the surface but has no real wave silhouette at the horizon. Compare it with the Gerstner toy above.</p>
+</div>
+
+<h2 id="ladder">Ocean quality ladder</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Rung</th><th>Technique</th><th>Example</th><th>Effort for an agent</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Flat plane + Fresnel mix of sky gradient and deep colour</td><td>Core of Seascape's <code>getSeaColor</code></td><td>One prompt</td></tr>
+<tr><td>2</td><td>Scrolling normal maps + sun specular + planar mirror</td><td>Three.js <code>Water</code> (demo above)</td><td>One prompt, if the agent knows the add-on</td></tr>
+<tr><td>3</td><td>3–8 Gerstner or sine waves in the vertex shader + normal-map ripples</td><td>GPU Gems ch. 1; wave toy above</td><td>A few iterations (normals and tiling)</td></tr>
+<tr><td>4</td><td>Raymarched noise heightfield in a fragment shader</td><td><a href="https://www.shadertoy.com/view/Ms2SD1">Seascape</a> (32 steps)</td><td>One prompt (well-known pattern); licence caution</td></tr>
+<tr><td>5</td><td>Refraction, depth colour, shoreline and intersection foam</td><td>Three.js <code>Water2</code>; Sea of Thieves</td><td>Several iterations; depth textures</td></tr>
+<tr><td>6</td><td>FFT spectrum (Phillips or JONSWAP), single tile</td><td>Tessendorf notes</td><td>Hard: compute or multi-pass, easy to get wrong</td></tr>
+<tr><td>7</td><td>FFT with 3–4 cascades + Jacobian foam + choppiness</td><td>Jump Trajectory, Acerola, abyssal-ocean</td><td>Many hours; bespoke</td></tr>
+<tr><td>8</td><td>Physical sky (Hillaire, Bruneton), underwater caustics and Snell's window, buoyancy, wakes</td><td>Crest (Unity, MIT, 3,922 stars), Unreal Water</td><td>Use an engine</td></tr>
+</tbody></table></div>
+<p>The rung assignments are <span class="tag verified">Verified</span> against the cited sources; the "effort" column is my <span class="tag inference">Inference</span>.</p>
+
+<div class="callout warn"><span class="callout-title">Typical failures in agent-made oceans</span>
+<ul>
+  <li><b>Grey band at the horizon</b>: fog colour does not match the sky. Fixed while building the wave toy above by fogging towards the sky function itself.</li>
+  <li><b>Visible tiling</b>: one normal map repeated. Fix with two maps at different scales and speeds, or distance fade.</li>
+  <li><b>Jelly waves</b>: sines with no Gerstner horizontal motion.</li>
+  <li><b>Flat, matte-looking water</b>: no environment map, or no tone mapping.</li>
+  <li><b>Blown-out sun</b>: ACES with exposure 1. The official example uses exposure 0.1.</li>
+  <li><b>404 on <code>waternormals.jpg</code></b>: the agent copied the official example, but the texture is not on the CDN path it used.</li>
+</ul>
+</div>
+
+<h2>Ready prompt (rung 3, browser)</h2>
+<div class="prompt-box">Build a single index.html (no build step) with Three.js r186 from a CDN import map.
+Scene: open ocean at golden hour, camera 6 m above the water, slowly orbiting.
+Water: a 256×256 PlaneGeometry (400 m) with 6 Gerstner waves in a ShaderMaterial vertex shader
+(deep-water dispersion ω = sqrt(9.81·k), steepness Q ≤ 0.8 total), analytic normals,
+Schlick Fresnel between deep colour #0a2a3a and the sky colour in the reflected direction,
+a sharp sun specular, turquoise subsurface tint on crests, foam where the Jacobian < 0.4.
+Sky: three.js Sky add-on (turbidity 6, rayleigh 2, sun 4° elevation); fog colour = sky colour at the horizon.
+Renderer: ACESFilmic tone mapping, exposure ~0.5, pixel ratio ≤ 2.
+Add a small GUI with sliders for sun elevation, wave height and choppiness, and an FPS/draw-call HUD.
+After writing it, open it in a headless browser, check the console for errors,
+take screenshots at sun 4° and 30°, and fix anything that looks wrong (horizon band, tiling, black water).</div>
+
+<h2>Further reading and examples</h2>
+<ul>
+  <li>Official: <a href="https://threejs.org/examples/webgl_shaders_ocean.html">webgl_shaders_ocean</a>, <a href="https://threejs.org/examples/webgpu_ocean.html">webgpu_ocean</a>, <a href="https://threejs.org/examples/webgpu_water.html">webgpu_water</a> (Water2Mesh; the older <code>webgl_water</code> example is gone as of 2026-10-17).</li>
+  <li>Engines: <a href="https://github.com/wave-harmonic/crest">Crest</a> (Unity; MIT; Crest 5 is a separate store product), <a href="https://github.com/2Retr0/GodotOceanWaves">GodotOceanWaves</a> (MIT, 3,320 stars, FFT).</li>
+  <li>Paper: Sea of Thieves, <a href="https://dl.acm.org/doi/pdf/10.1145/3214745.3214820">"The Technical Art of Sea of Thieves"</a> (SIGGRAPH 2018 talk).</li>
+</ul>
+</main>
+<script src="assets/js/demos/gl-mini.js"></script>
+<script src="assets/js/demos/waves.js"></script>
+<script src="assets/js/demos/ocean3.js"></script>
+</body>
+</html>

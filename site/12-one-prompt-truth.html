@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12 · The truth behind "one short prompt" — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part IV — Assets and agents</div>
+<h1>The truth behind "one short prompt"</h1>
+<p class="lead">"An AI built this photoreal city from one prompt" is a common headline. Where the prompts and code are public, the real story is nearly always different: a <b>long, structured brief</b>, <b>hours of agent time</b> with screenshot loops, or a short first prompt followed by <b>a long conversation</b>. This page classifies 17 public examples and gives you a checklist for judging the next one you see.</p>
+
+<h2>Four things "one prompt" can mean</h2>
+<div class="cards">
+  <div class="card"><b>A. Short prompt, long chat</b><br>A one-line first message, then dozens of follow-ups from a human. Example: fly.pieter.com ("after many questions and comments from me").</div>
+  <div class="card"><b>B. Long brief, long agent run</b><br>Hundreds of words with hard floors and banned outcomes; the agent runs for hours with self-screenshots. Examples: night-street, LAAS, AA-3D.</div>
+  <div class="card"><b>C. One file from one prompt</b><br>A single HTML file from a chat box. Real, but usually toy-sized: a voxel model, a small arcade game.</div>
+  <div class="card"><b>D. Marketing clip</b><br>A video with no prompt and no code. You cannot check it.</div>
+</div>
+<p><span class="tag inference">Inference</span> from the examples below.</p>
+
+<h2>How examples are classified</h2>
+<ul>
+  <li><span class="tag verified">Verified</span>: the prompt <b>and</b> the code are public, so you can try to reproduce it. I did <b>not</b> re-run any of them.</li>
+  <li><span class="tag plausible">Plausible</span>: partly public and credible, but something important is missing (code, the full prompt, or the iteration history).</li>
+  <li><span class="tag promo">Promotional</span>: marketing or a social-media claim with nothing reproducible.</li>
+</ul>
+<p>Model names (for example "Claude Fable 5" or "GPT-6 Astra") are quoted as the sources state them. Stars are from the GitHub API on 2026-10-17.</p>
+
+<h2 id="examples">Examples</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Example</th><th>Date</th><th>What is public</th><th>What actually happened</th><th>Class</th></tr></thead>
+<tbody>
+<tr><td><a href="https://github.com/StarKnightt/night-street">night-street</a>: first-person photoreal night street</td><td>2026-08</td><td>Code (MIT, 129 stars) + 5 prompts verbatim in <code>PROMPTS.md</code></td><td>First brief defines 8 numbered systems, a strict build order and a blind-critic subagent; "keep cooking" turns omitted; the back half "was art direction against screenshots"; zero external assets</td><td><span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://github.com/Braffolk/fable5-world-demo">LAAS</a>: 4×4 km procedural world</td><td>2026-06 to 07</td><td>Code (MIT, 725 stars) + long human-written brief</td><td>"Roughly 99% by the model, with minimal human steering", over many sessions with <code>STATUS.md</code> as memory; WebGPU only; Playwright QA on a real GPU</td><td><span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://github.com/kalaanakonda/Claudepunk2077/">Claudepunk2077</a></td><td>2026-07</td><td>Code (no licence) + <code>PROMPT.md</code></td><td>Honest about three areas still being "stubs"</td><td><span class="tag verified">Verified</span>, incomplete</td></tr>
+<tr><td><a href="https://github.com/srizzon/git-city">Git City</a></td><td>2026-02</td><td>Code (AGPL-3.0, 5,814 stars)</td><td>21,000 lines in 4 days with Claude; the author lists where he "had to step in" (architecture, UX, performance)</td><td><span class="tag verified">Verified</span> code, not one prompt</td></tr>
+<tr><td><a href="https://simonwillison.net/2024/Oct/25/pelicans-on-a-bicycle/">Pelican on a bicycle</a> (SVG, not 3D)</td><td>2024 to now</td><td>One-line prompt + outputs</td><td>Set up "as a joke"; now considered saturated</td><td><span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://levels.io/fly-pieter-com-vibecoded-flight-simulator">fly.pieter.com</a> flight sim</td><td>2025-02</td><td>First prompt ("make a 3d flying game in browser with skyscrapers"); live site</td><td>Built live on X "after many questions and comments from me"; no repo</td><td><span class="tag plausible">Plausible</span></td></tr>
+<tr><td><a href="https://developers.openai.com/showcase/glass-towers">OpenAI "Glass Towers"</a></td><td>2026</td><td>Initial prompt + description of later passes</td><td>The vendor shows "repeated passes" and an "intensive polish pass"</td><td><span class="tag plausible">Plausible</span></td></tr>
+<tr><td><a href="https://github.com/PhiloLabs/fable51-worlds">fable51-worlds</a></td><td>2026-09</td><td>Code (MIT, 523 stars), per-world briefs</td><td>Agent swarms with a recon, assets, runtime pipeline</td><td><span class="tag plausible">Plausible</span></td></tr>
+<tr><td>Gemini 3 voxel and spaceship demos (<a href="https://www.youtube.com/watch?v=qOL49DYWr7s">video</a>)</td><td>2025-11</td><td>Prompts in video descriptions; AI Studio bundled apps</td><td>The "single prompt" is a multi-section technical spec; the apps are Google-curated templates <span class="tag inference">Inference</span></td><td><span class="tag plausible">Plausible</span></td></tr>
+<tr><td><a href="https://note.com/hajimetwi3/n/n855b983143da?hl=en">Coastal simulator</a> (same prompt, two models)</td><td>2026-07 to 08</td><td>Prompt (Japanese)</td><td>"Two prompt inputs" for one model; the other run "AI ran for several hours"</td><td><span class="tag plausible">Plausible</span></td></tr>
+<tr><td><a href="https://github.com/achrefelouafi/WaterThreeJS">WaterThreeJS</a></td><td>2026-07</td><td>Code (MIT, 100 stars)</td><td>No prompt; "AI-made" not confirmed</td><td><span class="tag plausible">Plausible</span></td></tr>
+<tr><td>Karpathy: <i>Lord of the Rings</i> opening in Three.js</td><td>2026-08</td><td>Secondary report only</td><td>About 2 hours, about 5,500 lines, a 1M-token budget; screenshots at several points; jank admitted</td><td><span class="tag plausible">Plausible</span> <span class="tag unverified">Unverified</span></td></tr>
+<tr><td>GPT-5 launch "castle"</td><td>2025-08</td><td>Prompt read out on stream</td><td>"I've already generated [it] just to save some time"; code not public</td><td><span class="tag promo">Promotional</span></td></tr>
+<tr><td>Claude Fable 5 launch "photoreal forest" and "two prompts → Titanic game" posts</td><td>2026-06</td><td>Clips only</td><td>Replies asking "what's the prompt?" went unanswered in the captures I found</td><td><span class="tag promo">Promotional</span></td></tr>
+<tr><td><a href="https://www.unrealengine.com/learning/city-sample-gets-a-major-update-with-pcg-and-unreal-mcp-workflows">Epic City Sample</a> (UE 5.8)</td><td>2026-08-27</td><td>Downloadable project with PCG graphs; Epic: "in this case, we used Claude"</td><td>The city was rebuilt with PCG "with assistance from the LLM" over Unreal MCP, by Epic's own team and with professional assets; prompts not published</td><td><span class="tag verified">Verified</span> project, prompts not public</td></tr>
+<tr><td>Engine MCP README showcases (Unity, Godot)</td><td>2026</td><td>GIFs and claims ("block-world game in ~2 hours")</td><td>Project self-promotion</td><td><span class="tag promo">Promotional</span></td></tr>
+<tr><td>"Same prompt, three models" token post</td><td>2026</td><td>Anonymous video repost</td><td>Claims 35M to 1.17 billion tokens for one prompt, and output sped up for the video</td><td><span class="tag promo">Promotional</span> <span class="tag unverified">Unverified</span></td></tr>
+</tbody></table></div>
+
+<div class="callout good"><span class="callout-title">What the verified examples have in common</span>
+<ul>
+  <li>A <b>long brief</b> with numbers: walking speed 1.4 m/s, a frame budget, banned looks.</li>
+  <li>A <b>screenshot loop</b>, often with a separate critic.</li>
+  <li><b>Persistent notes</b> across sessions (<code>STATUS.md</code>, <code>NOTES.md</code>).</li>
+  <li><b>Hours</b> of agent time.</li>
+  <li>Honest limits. night-street's first frame takes 34.9–39.4 s on an RTX 4060, more than 95% of it shader compilation.</li>
+</ul>
+<span class="tag verified">Verified</span> (repo READMEs)</div>
+
+<h2 id="benchmarks">Benchmarks: the fairest evidence</h2>
+<p>Benchmarks run fixed prompts across many models and judge them blind, which removes cherry-picking.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Benchmark</th><th>Set-up</th><th>What it tells you</th></tr></thead>
+<tbody>
+<tr><td><a href="https://artificialanalysis.ai/articles/aa-3d">AA-3D</a> (2026-10-12)</td><td>55 briefs, 7 domains; an agent sandbox for up to 3 h or 250 turns; blind pairwise votes (10K+); Elo</td><td>Claude Sonnet 5.5 first at 1194, but the <b>top four are statistically tied</b>. Cost per scene $0.20–$32.08. Each domain cell rests on 2–10 scenes. <span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://threejseval.com/models">threejseval.com</a></td><td>16 fixed scene prompts; blind votes; Elo; cost per eval</td><td>One model at $2.67 per eval vs another at $0.22, with an 85 Elo gap: <b>cost differs ten-fold for similar quality</b>. <span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://todofor.ai/bench/threejs-bench">ThreeJSBench</a> (TODO for AI)</td><td>One-line prompt; single file; pinned three@0.182; headless Chrome; raw outputs published</td><td>In one run (2026-10-06), one of 7 models timed out with no output. Its FPS numbers come from headless rendering; see <a href="11-agent-workflow.html">page 11</a>. <span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://dabench.ai/showcase/boat-game">DaBench boat game</a></td><td>The same "ultra realistic water" prompt on 7 models, with costs</td><td>Compare outputs side by side yourself. <span class="tag verified">Verified</span> (page exists)</td></tr>
+<tr><td><a href="https://arena.ai/blog/webdev-arena">WebDev Arena</a></td><td>User prompts, two models, a vote</td><td>General web apps, <b>not</b> 3D-specific. <span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://notes.designarena.ai/methodology/">Design Arena</a> (<code>3d</code> category)</td><td>Pairwise Elo</td><td>Has a 3D category. <span class="tag verified">Verified</span></td></tr>
+<tr><td><a href="https://techcrunch.com/2025/03/20/a-high-schooler-built-a-website-that-lets-you-challenge-ai-models-to-a-minecraft-build-off/">MC-Bench</a></td><td>Models write code that builds in Minecraft; blind votes</td><td>Spatial reasoning, voxel style. <span class="tag verified">Verified</span></td></tr>
+</tbody></table></div>
+<p>Do not confuse these with "3D Arena" on Hugging Face, which (as far as I know) ranks text-to-3D <i>mesh generators</i>. <span class="tag unverified">Unverified</span></p>
+
+<h2 id="checklist">Checklist: judging a "one prompt" claim</h2>
+<ol>
+  <li><b>Is the exact prompt published</b> as text? Is it short (under about 100 words) or a multi-page brief?</li>
+  <li><b>Is the code public and runnable?</b> A pinned <code>three</code> version, no private assets.</li>
+  <li><b>Are all turns shown?</b> A chat export, commit history or <code>PROMPTS.md</code>. "Two prompts" is not one.</li>
+  <li><b>Are time and cost stated?</b> For scale, AA-3D allows up to 3 h and 250 turns, at $0.20–$32 per scene.</li>
+  <li><b>Can you run it on your machine?</b> Or is it only a video, possibly sped up, recorded on a high-end GPU?</li>
+  <li><b>Was it built on a template</b> or on earlier scaffolding? AI Studio bundled apps, or code reused from a previous project (night-street reused comments from an earlier one).</li>
+  <li><b>Does a blind benchmark</b> show similar quality for the same model?</li>
+</ol>
+<p><span class="tag inference">Inference</span>: my synthesis from the evidence above.</p>
+
+<div class="callout idea"><span class="callout-title">What one short prompt really gets you</span>
+With a current frontier model and an agent that can see its output, one short prompt typically produces a <b>working, decent-looking small scene</b> in minutes: an ocean with a sky, a procedural low-poly city, a voxel model. The "impressive" level (photoreal lighting, a walkable district, good performance) has, in every verified case, needed a long brief, many iterations and hours of agent time. <span class="tag inference">Inference</span></div>
+</main>
+</body>
+</html>

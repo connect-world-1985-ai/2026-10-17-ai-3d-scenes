@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · Shaders, noise and signed distance fields — AI 3D scenes</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js"></script>
+</head>
+<body>
+<main>
+<div class="kicker">Part II — Fundamentals</div>
+<h1>Shaders, noise and signed distance fields</h1>
+<p class="lead">Shaders are small programs that run on the GPU, thousands at once. Water, windows, sky, terrain detail, the glow on a neon sign: in most impressive web demos, the most visible effects are shader code, not models. This is also where LLMs shine and fail most visibly. They know the classic snippets by heart, but a single sign error gives a black screen.</p>
+
+<h2>Vertex and fragment shaders</h2>
+<figure class="figure">
+<svg viewBox="0 0 820 170" role="img" aria-label="GPU pipeline: vertices, vertex shader, rasteriser, fragment shader, pixels">
+  <g font-size="13">
+    <rect x="15" y="50" width="135" height="64" rx="8" class="svg-box"/><text x="82" y="78" text-anchor="middle" class="svg-fg" font-weight="700">Vertices</text><text x="82" y="97" text-anchor="middle" class="svg-soft" font-size="12">position, normal, uv</text>
+    <rect x="185" y="50" width="150" height="64" rx="8" class="svg-acc"/><text x="260" y="78" text-anchor="middle" class="svg-fg" font-weight="700">Vertex shader</text><text x="260" y="97" text-anchor="middle" class="svg-soft" font-size="12">runs per vertex: move it</text>
+    <rect x="370" y="50" width="120" height="64" rx="8" class="svg-box"/><text x="430" y="78" text-anchor="middle" class="svg-fg" font-weight="700">Rasteriser</text><text x="430" y="97" text-anchor="middle" class="svg-soft" font-size="12">fixed hardware</text>
+    <rect x="525" y="50" width="150" height="64" rx="8" class="svg-acc"/><text x="600" y="78" text-anchor="middle" class="svg-fg" font-weight="700">Fragment shader</text><text x="600" y="97" text-anchor="middle" class="svg-soft" font-size="12">runs per pixel: colour it</text>
+    <rect x="710" y="50" width="95" height="64" rx="8" class="svg-box"/><text x="757" y="87" text-anchor="middle" class="svg-fg" font-weight="700">Pixels</text>
+    <path d="M150 82 H180 M335 82 H365 M490 82 H520 M675 82 H705" class="svg-line" stroke-width="2"/>
+    <text x="260" y="140" text-anchor="middle" class="svg-soft" font-size="12">e.g. Gerstner waves displace a grid</text>
+    <text x="600" y="140" text-anchor="middle" class="svg-soft" font-size="12">e.g. Fresnel, lit windows, raymarching</text>
+  </g>
+</svg>
+</figure>
+<p>The two programs are written in GLSL (WebGL) or WGSL (WebGPU). Three.js also has its own node language, TSL, which compiles to both. Data flows in as <b>attributes</b> (per vertex), <b>uniforms</b> (same for the whole draw: time, sun direction) and <b>textures</b>; it flows from vertex to fragment shader as <b>varyings</b>, interpolated across each triangle.</p>
+<pre><code>// fragment shader: a window grid on a building face, no textures
+uniform float uNight;
+varying vec3 vWorld;
+void main() {
+  vec2 cell = vec2(vWorld.x / 2.2, vWorld.y / 3.2);       // 2.2 m wide cells, 3.2 m storeys
+  vec2 f = fract(cell);                                    // position inside the cell, 0..1
+  float win = step(0.2, f.x) * step(f.x, 0.8) * step(0.3, f.y) * step(f.y, 0.85);
+  float lit = step(0.55, fract(sin(dot(floor(cell), vec2(41.3, 289.1))) * 43758.5453));
+  vec3 wall = vec3(0.45, 0.42, 0.40);
+  gl_FragColor = vec4(mix(wall, vec3(1.0, 0.75, 0.4) * lit * uNight, win), 1.0);
+}</code></pre>
+<p>That is essentially the window shader of this guide's <a href="08-city.html">city demo</a>. Three ideas do all the work: <code>fract()</code> for repetition, <code>step()</code> for hard edges, and a hash of the cell index for per-window randomness.</p>
+<p>In Three.js you write custom shaders three ways:</p>
+<ul>
+  <li><code>ShaderMaterial</code>: full control, but you write all the lighting yourself.</li>
+  <li><code>onBeforeCompile</code>: inject code into a built-in material and keep PBR.</li>
+  <li>TSL node materials, required for <code>WebGPURenderer</code>. WebGPURenderer supports neither <code>ShaderMaterial</code> nor <code>onBeforeCompile</code>. <span class="tag verified">Verified</span> This is a major reason agents still default to WebGL.</li>
+</ul>
+
+<h2>Noise: the source of all natural detail</h2>
+<p>Pure randomness looks like TV static. Natural surfaces (clouds, terrain, water, stone) have structure at many scales. Shader noise functions provide smooth pseudo-randomness:</p>
+<ul>
+  <li><b>Value noise and Perlin (gradient) noise.</b> Perlin 1985, then <a href="https://doi.org/10.1145/566570.566636">"Improving noise" 2002</a>, which introduced the quintic fade 6t⁵−15t⁴+10t³. <span class="tag verified">Verified</span></li>
+  <li><b>Simplex noise</b>: cheaper in higher dimensions, fewer directional artefacts.</li>
+  <li><b>Worley (cellular) noise</b> (Worley 1996): cell-like patterns for stone, foam, caustics.</li>
+  <li><b>fBm</b> (fractional Brownian motion): add several octaves of noise, each with double the frequency and half the amplitude. Five to eight octaves of fBm is the standard terrain or cloud recipe; domain warping (feeding noise into noise) gives marbled, eroded looks.</li>
+</ul>
+<p>The best introduction is <a href="https://thebookofshaders.com/11/">The Book of Shaders</a> (chapters on noise and fBm). The reference snippets most agents reproduce are by Inigo Quilez (<a href="https://iquilezles.org/articles/">iquilezles.org</a>). He publishes his snippet code under MIT, but his ShaderToy artworks remain protected. <span class="tag verified">Verified</span></p>
+
+<h2>Signed distance fields and raymarching</h2>
+<p>A <b>signed distance function</b> (SDF) returns, for any point in space, the distance to the nearest surface: negative inside, positive outside. A sphere is <code>length(p) - r</code>. Shapes combine with <code>min</code> (union), <code>max</code> (intersection) and smooth-min (blend). Space can be <b>folded</b>: <code>p.xz = mod(p.xz, 10.0) - 5.0</code> repeats an object infinitely in two directions for the cost of one.</p>
+<p><b>Sphere tracing</b> (<a href="https://doi.org/10.1007/s003710050084">Hart 1996</a>) renders it: from the camera, step along each pixel's ray by the SDF value. That step is guaranteed not to pass through anything. Stop when the distance is tiny (a hit) or after N steps (a miss). <span class="tag verified">Verified</span></p>
+<figure class="figure">
+<svg viewBox="0 0 760 230" role="img" aria-label="Sphere tracing: each step is as long as the distance to the nearest surface">
+  <rect x="560" y="30" width="170" height="170" rx="6" class="svg-acc"/>
+  <circle cx="330" cy="185" r="40" class="svg-box"/>
+  <g fill="none" class="svg-line" stroke-dasharray="4 4">
+    <circle cx="40" cy="110" r="259.5"/><circle cx="299.5" cy="110" r="41"/><circle cx="340.5" cy="110" r="35.7"/>
+    <circle cx="376.2" cy="110" r="48.1"/><circle cx="424.3" cy="110" r="80.5"/><circle cx="504.8" cy="110" r="55.2"/>
+  </g>
+  <path d="M40 110 H560" class="svg-acc-line" stroke-width="2"/>
+  <g class="svg-fg"><circle cx="40" cy="110" r="5"/><circle cx="299.5" cy="110" r="4"/><circle cx="340.5" cy="110" r="4"/><circle cx="376.2" cy="110" r="4"/><circle cx="424.3" cy="110" r="4"/><circle cx="504.8" cy="110" r="4"/></g>
+  <circle cx="560" cy="110" r="6" fill="#e11d48"/>
+  <text x="30" y="96" class="svg-fg" font-size="13">camera</text>
+  <text x="575" y="222" class="svg-soft" font-size="12">hit after 6 steps</text>
+  <text x="250" y="222" class="svg-soft" font-size="12">steps shrink near the sphere</text>
+</svg>
+<figcaption>Each dashed circle is the "safe" distance from the SDF at that point; the ray jumps to its edge. Steps shrink when the ray grazes an object. That is why the step heat map in the demo below glows at silhouettes.</figcaption>
+</figure>
+<p>Everything else follows from the same function:</p>
+<ul>
+  <li><b>Normals</b> come from the SDF's gradient (sample it at six nearby points).</li>
+  <li><b>Soft shadows</b> come from marching towards the sun and remembering the closest near-miss.</li>
+  <li><b>Ambient occlusion</b> comes from sampling the distance a few times along the normal.</li>
+</ul>
+<p>No meshes, no textures: one full-screen triangle and one fragment shader.</p>
+
+<h2 id="demo-raymarch">Try it: one fragment shader draws a city</h2>
+<p>This demo is raw WebGL with no library, so it works <b>offline</b>. Each building is one box SDF, repeated across space with <code>mod</code>; height varies with a hash of the cell index. A blob in the middle is smooth-min blended into the ground. Things to try:</p>
+<ul>
+  <li>Drop <i>max steps</i> to 16 and watch distant buildings vanish: the ray gives up before reaching them.</li>
+  <li>Switch the view to <i>step heat map</i> to see where the GPU works hardest.</li>
+  <li>Set the smooth-min <i>k</i> to 0 to see a hard union.</li>
+</ul>
+<div class="demo">
+  <div class="demo-head"><span class="live">LIVE</span> Raymarched SDF city <span class="src">raw WebGL · assets/js/demos/raymarch.js</span></div>
+  <div class="demo-stage" id="rmStage"><canvas></canvas><div class="hud"></div></div>
+  <div class="demo-controls">
+    <label><div class="row">Max steps per ray <span class="v" id="rmStepsV"></span></div><input type="range" id="rmSteps" min="16" max="256" step="1" value="128"></label>
+    <label><div class="row">Smooth-min blend k <span class="v" id="rmKV"></span></div><input type="range" id="rmK" min="0.01" max="3" step="0.01" value="1"></label>
+    <label><div class="row">Building height <span class="v" id="rmHV"></span></div><input type="range" id="rmH" min="0" max="2" step="0.05" value="1"></label>
+    <label><div class="row">Sun elevation <span class="v" id="rmSunV"></span></div><input type="range" id="rmSun" min="5" max="175" step="1" value="50"></label>
+    <label><div class="row">Fog density <span class="v" id="rmFogV"></span></div><input type="range" id="rmFog" min="0" max="5" step="0.1" value="1"></label>
+    <label>Render resolution <select id="rmRes"><option value="1">100% (sharp)</option><option value="0.5">50% (4× fewer pixels)</option><option value="0.25">25%</option></select></label>
+    <label>View <select id="rmView"><option value="0">Shaded</option><option value="1">Normals</option><option value="2">Step heat map</option></select></label>
+    <label class="check"><input type="checkbox" id="rmShadow" checked> Soft shadows (a second march per pixel)</label>
+    <label class="check"><input type="checkbox" id="rmSpin" checked> Auto-rotate</label>
+  </div>
+  <p class="demo-note">Drag to orbit, scroll to zoom. The cost is per <i>pixel</i>, not per object: halving resolution makes it about 4× cheaper, while adding buildings through repetition is free.</p>
+</div>
+
+<h2>Where this shows up in "AI-made" demos</h2>
+<ul>
+  <li><b>ShaderToy-style scenes.</b> Endless terrains, seas and abstract cities in one shader. Famous examples: <a href="https://www.shadertoy.com/view/Ms2SD1">Seascape</a> (TDM), a noise heightfield with 32 march steps, neither Gerstner nor FFT; iq's <a href="https://www.shadertoy.com/view/MdX3Rr">Elevated</a> and <a href="https://www.shadertoy.com/view/4ttSWf">Rainforest</a>. <span class="tag verified">Verified</span> When an LLM writes "a realistic ocean shader", it often reproduces a version of Seascape. <span class="tag inference">Inference</span></li>
+  <li><b>Inside mesh scenes.</b> Sky domes, clouds, fog volumes and water surfaces are often raymarched or noise-driven inside an otherwise normal Three.js scene.</li>
+  <li><b>Licence caution.</b> ShaderToy's default licence is CC BY-NC-SA 3.0 unless the author states otherwise. A model "recalling" a famous shader can bring a non-commercial licence along with it. <span class="tag verified">Verified</span> (licence) / <span class="tag inference">Inference</span> (risk)</li>
+</ul>
+
+<h2>Typical shader failures (and how agents fix them)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Symptom</th><th>Usual cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>Black or magenta screen, console says "shader compile error"</td><td>GLSL type errors (<code>1</code> instead of <code>1.0</code>), wrong GLSL version, missing <code>precision</code></td><td>Read the compile log; agents fix this quickly when they see the error text</td></tr>
+<tr><td>Holes or "onion rings" in raymarched surfaces</td><td>Too few steps, or a distance function that is not a true distance (after scaling or twisting)</td><td>More steps; multiply the step by 0.5–0.8 for non-exact SDFs</td></tr>
+<tr><td>Banding in sky gradients</td><td>8-bit output of smooth gradients</td><td>Add tiny noise (dithering) before output</td></tr>
+<tr><td>Noise looks the same everywhere or "swims"</td><td>Hash precision issues on mobile GPUs, or time added to the wrong coordinate</td><td>Better hash functions; animate the noise domain, not the output</td></tr>
+<tr><td>Works on desktop, black on phone</td><td>Mobile precision (<code>mediump</code>) or loop limits</td><td>Use <code>highp</code> where supported; constant loop bounds</td></tr>
+</tbody></table></div>
+
+<h2>Further reading</h2>
+<ul>
+  <li><a href="https://thebookofshaders.com/">The Book of Shaders</a> (Gonzalez Vivo and Lowe): the gentle start.</li>
+  <li><a href="https://iquilezles.org/articles/distfunctions/">Inigo Quilez: distance functions</a> and <a href="https://iquilezles.org/articles/rmshadows/">soft shadows</a>: the canonical snippets.</li>
+  <li><a href="https://www.shadertoy.com/">ShaderToy</a>: browse, but check each shader's licence.</li>
+  <li><a href="https://threejs.org/docs/#api/en/materials/ShaderMaterial">Three.js ShaderMaterial</a> and the <a href="https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language">TSL wiki page</a>.</li>
+</ul>
+</main>
+<script src="assets/js/demos/gl-mini.js"></script>
+<script src="assets/js/demos/raymarch.js"></script>
+</body>
+</html>
