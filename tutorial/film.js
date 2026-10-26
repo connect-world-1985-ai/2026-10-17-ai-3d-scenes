@@ -6,6 +6,17 @@
   var preview = params.has('t') ? parseFloat(params.get('t')) : null;
   if (RECORD) document.body.classList.add('record');
 
+  function fitStage() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    document.body.style.transform = 'scale(' + s + ')';
+    document.body.style.left = ((window.innerWidth - 1920 * s) / 2) + 'px';
+    document.body.style.top = ((window.innerHeight - 1080 * s) / 2) + 'px';
+  }
+  if (!RECORD) {
+    fitStage();
+    window.addEventListener('resize', fitStage);
+  }
+
   var stage = document.getElementById('stage');
   var caption = document.getElementById('caption');
   var chapterLabel = document.getElementById('chapterLabel');
@@ -143,7 +154,8 @@
       '<h1>How an agent actually builds a 3D scene</h1>' +
       '<p class="sub">About ' + mins + ' minutes, with the words on screen. ' +
       'The same film as the recording. Drag the chapter bar to move.</p>' +
-      '<button type="button" id="playBtn">Play the lesson</button></div>';
+      '<button type="button" id="playBtn">Play the lesson</button>' +
+      '<p class="alt"><a href="watch.html">Watch the recording instead</a></p></div>';
     document.body.appendChild(gate);
     document.getElementById('playBtn').addEventListener('click', function () {
       audio = new Audio('audio/narration.m4a');

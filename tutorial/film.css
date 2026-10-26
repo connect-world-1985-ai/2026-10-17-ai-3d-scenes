@@ -16,12 +16,22 @@
 * { box-sizing: border-box; }
 html, body {
   margin: 0;
-  width: 1920px;
-  height: 1080px;
-  overflow: hidden;
   background: var(--bg);
   color: var(--ink);
   font-family: Inter, "Liberation Sans", sans-serif;
+}
+html.record, html.record body {
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+}
+html:not(.record) { width: 100%; height: 100%; overflow: hidden; }
+html:not(.record) body {
+  position: fixed;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  transform-origin: 0 0;
 }
 body.sync { background: #ff00ff; }
 body.sync #app { visibility: hidden; }
@@ -388,6 +398,8 @@ h1 {
   font-weight: 700;
   cursor: pointer;
 }
+.gate .alt { margin: 18px 0 0; font-size: 18px; }
+.gate a { color: var(--teal); }
 body.record .gate { display: none; }
 
 .meters { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 100%; padding: 20px; }

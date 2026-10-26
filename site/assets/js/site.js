@@ -73,6 +73,7 @@
       '<button class="icon-btn" id="navToggle" aria-label="Open navigation">☰</button>' +
       '<a class="brand" href="index.html">AI <span>3D scenes</span> — a field guide</a>' +
       '<div class="spacer"></div>' +
+      '<a class="icon-btn" href="../tutorial/watch.html">Watch</a>' +
       '<button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light/dark"></button>';
 
     // sidebar

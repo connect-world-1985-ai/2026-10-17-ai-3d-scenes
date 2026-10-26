@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 3D scenes — watch the lesson</title>
+<style>
+  :root { color-scheme: dark; --bg:#10141a; --ink:#eef2f6; --muted:#9aa7b5; --line:#2c3644; --card:#1a212b; --amber:#e4a15a; --teal:#7dcec4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 system-ui, sans-serif; }
+  main { max-width: 880px; margin: 0 auto; padding: 64px 24px 80px; }
+  .kicker { color: var(--amber); letter-spacing: .14em; text-transform: uppercase; font-size: 12px; font-weight: 700; }
+  h1 { font-size: clamp(36px, 6vw, 56px); line-height: 1.05; margin: 10px 0 16px; }
+  .lead { color: var(--muted); font-size: 19px; max-width: 40em; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 36px; }
+  a.btn { display: inline-block; text-decoration: none; border-radius: 999px; padding: 12px 18px; font-weight: 700; }
+  a.primary { background: var(--amber); color: #1a1208; }
+  a.secondary { border: 1px solid var(--line); color: var(--ink); }
+  .grid { display: grid; gap: 12px; }
+  a.card { display: block; text-decoration: none; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  a.card:hover { border-color: var(--amber); }
+  a.card strong { display: block; margin-bottom: 4px; }
+  a.card span { color: var(--muted); }
+  ol { padding-left: 1.2em; color: var(--muted); }
+  ol b { color: var(--ink); font-weight: 650; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 14px; }
+  code { font-family: ui-monospace, monospace; font-size: .9em; }
+</style>
+</head>
+<body>
+<main>
+  <div class="kicker">Field guide · snapshot 17 Oct 2026</div>
+  <h1>How an agent actually builds a 3D scene</h1>
+  <p class="lead">A 36-minute lesson on the clips you keep seeing: a city at night, an ocean under a low sun, a walk down a street. By the end you can watch one and explain where the pixels came from.</p>
+  <div class="actions">
+    <a class="btn primary" href="tutorial/watch.html">Watch the recording</a>
+    <a class="btn secondary" href="tutorial/film.html">Open the live lesson</a>
+  </div>
+  <div class="grid">
+    <a class="card" href="tutorial/watch.html"><strong>The recording</strong><span>Play, pause, and jump by chapter. This is the film to sit down with.</span></a>
+    <a class="card" href="tutorial/film.html"><strong>The same lesson, live</strong><span>Narration with the diagrams and shaders drawn in the page, so you can stop on a picture.</span></a>
+    <a class="card" href="site/index.html"><strong>The field guide</strong><span>The sixteen pages, live demos, sources, and starter prompts the lesson is built from.</span></a>
+  </div>
+  <h2>What the lesson covers</h2>
+  <ol>
+    <li><b>Where pixels come from</b> — code, capture, generated assets, and video that has no geometry.</li>
+    <li><b>Inside one frame</b> — the 16.7&nbsp;ms budget, the scene graph, and the camera.</li>
+    <li><b>Light, shaders, and cost</b> — materials, raymarching, and why a city of boxes gets expensive.</li>
+    <li><b>Two recipes</b> — an ocean, then a city.</li>
+    <li><b>The agent</b> — the screenshot loop, and what “one prompt” left out.</li>
+  </ol>
+  <footer>Numbers match the 17 October 2026 snapshot. Locally: <code>python3 -m http.server 8765</code> from this folder.</footer>
+</main>
+</body>
+</html>

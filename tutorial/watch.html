@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch — How an agent actually builds a 3D scene</title>
+<style>
+  :root { color-scheme: dark; --bg:#10141a; --ink:#eef2f6; --muted:#9aa7b5; --line:#2c3644; --card:#1a212b; --amber:#e4a15a; --teal:#7dcec4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+  header, main { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: baseline; padding-top: 22px; }
+  a { color: var(--teal); }
+  .brand { color: var(--amber); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 13px; text-decoration: none; }
+  h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.1; margin: 8px 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  video { width: 100%; background: #000; border-radius: 12px; aspect-ratio: 16/9; }
+  .chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 16px 0 28px; }
+  button.ch { text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; font: inherit; }
+  button.ch:hover, button.ch.on { border-color: var(--amber); }
+  button.ch b { display: block; color: var(--amber); font-size: 12px; letter-spacing: .04em; }
+  footer { color: var(--muted); padding-bottom: 40px; }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="../index.html">AI 3D scenes</a>
+  <a href="film.html">Open the live lesson</a>
+  <a href="../site/index.html">Read the field guide</a>
+</header>
+<main>
+  <h1>How an agent actually builds a 3D scene</h1>
+  <p class="sub">36 minutes. The pictures are the lesson. Jump to a chapter, or let it play through.</p>
+  <video id="lesson" controls preload="metadata" playsinline>
+    <source src="how_an_agent_builds_a_3d_scene.mp4" type="video/mp4">
+  </video>
+  <div class="chapters" id="chapters"></div>
+  <footer>
+    <p>The same narration also plays inside <a href="film.html">the live lesson</a>, where the diagrams and shaders are drawn in the page.</p>
+    <p><a href="how_an_agent_builds_a_3d_scene.mp4" download>Download the video</a></p>
+  </footer>
+</main>
+<script>
+(function () {
+  var chapters = [
+    ['Opening', 0],
+    ['Where pixels come from', 59.04],
+    ['Inside one frame', 257.832],
+    ['Light, shaders, cost', 627.624],
+    ['Two recipes', 983.136],
+    ['The agent', 1272.488],
+    ['One prompt', 1710.12],
+    ['Your first scene', 1858.08]
+  ];
+  var video = document.getElementById('lesson');
+  var box = document.getElementById('chapters');
+  function stamp(t) {
+    var s = Math.floor(t);
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+  chapters.forEach(function (ch, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ch';
+    b.innerHTML = '<b>' + stamp(ch[1]) + '</b>' + ch[0];
+    b.addEventListener('click', function () {
+      video.currentTime = ch[1];
+      video.play();
+    });
+    box.appendChild(b);
+  });
+  video.addEventListener('timeupdate', function () {
+    var buttons = box.children;
+    for (var i = 0; i < chapters.length; i++) {
+      var next = i + 1 < chapters.length ? chapters[i + 1][1] : 1e9;
+      buttons[i].classList.toggle('on', video.currentTime >= chapters[i][1] && video.currentTime < next);
+    }
+  });
+})();
+</script>
+</body>
+</html>

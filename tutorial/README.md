@@ -2,7 +2,12 @@
 
 A narrated lesson on the field guide in `site/`. It is meant to be watched: the mechanisms in order, with the pictures that make them concrete.
 
-Open `film.html` through a local server and press play. The chapter bar seeks. Left and right arrows move five seconds.
+On the published site:
+
+- the recording is `watch.html` (the file is `how_an_agent_builds_a_3d_scene.mp4`, about 36 minutes)
+- the same lesson drawn live is `film.html`
+
+Open `film.html` through a local server and press play. The chapter bar seeks. Left and right arrows move five seconds. The page is drawn at 1920×1080 and scaled to the window. A recording pass (`?record=1`) keeps the exact pixel size.
 
 ```bash
 cd tutorial
